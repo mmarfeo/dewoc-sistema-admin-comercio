@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(php --version 2>&1)",
+      "PowerShell(cd \"c:\\\\xampp\\\\htdocs\\\\01-Dewoc-Sist-Admin-Comercio\"; \\(Get-Content tests/unit/ClienteModelTest.php\\) -replace 'assertStringContains\\\\\\(', 'assertContains\\(' -replace 'assertStringNotContains\\\\\\(', 'assertNotContains\\(' | Set-Content tests/unit/ClienteModelTest.php -Encoding utf8; \\(Get-Content tests/unit/ReportesTest.php\\) -replace 'assertStringContains\\\\\\(', 'assertContains\\(' -replace 'assertStringNotContains\\\\\\(', 'assertNotContains\\(' | Set-Content tests/unit/ReportesTest.php -Encoding utf8)"
+    ]
+  }
+}

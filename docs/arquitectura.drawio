@@ -1,0 +1,174 @@
+<mxfile host="app.diagrams.net" modified="2026-06-25T00:00:00.000Z" agent="Dewoc Admin">
+  <diagram id="arch-dewoc" name="Arquitectura del Sistema">
+    <mxGraphModel dx="1422" dy="762" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== ZONE BACKGROUNDS (bottom layer) ===== -->
+
+        <!-- Zone: Cliente -->
+        <mxCell id="zone-cliente" value="" style="rounded=0;fillColor=#dae8fc;strokeColor=#6c8ebf;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="15" width="860" height="125" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl-zone-cliente" value="PRESENTACIÓN (CLIENTE)" style="text;fontStyle=1;fontSize=10;fillColor=none;strokeColor=none;fontColor=#23527c;align=left;" vertex="1" parent="1">
+          <mxGeometry x="26" y="18" width="240" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Zone: Aplicación PHP -->
+        <mxCell id="zone-app" value="" style="rounded=0;fillColor=#d5e8d4;strokeColor=#82b366;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="155" width="860" height="350" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl-zone-app" value="APLICACIÓN PHP — PATRÓN MVC" style="text;fontStyle=1;fontSize=10;fillColor=none;strokeColor=none;fontColor=#2d662d;align=left;" vertex="1" parent="1">
+          <mxGeometry x="26" y="158" width="300" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Zone: Persistencia -->
+        <mxCell id="zone-db" value="" style="rounded=0;fillColor=#fff2cc;strokeColor=#d6b656;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="20" y="520" width="860" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl-zone-db" value="PERSISTENCIA" style="text;fontStyle=1;fontSize=10;fillColor=none;strokeColor=none;fontColor=#7d5a00;align=left;" vertex="1" parent="1">
+          <mxGeometry x="26" y="523" width="200" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Zone: APIs Externas -->
+        <mxCell id="zone-apis" value="" style="rounded=0;fillColor=#f8cecc;strokeColor=#b85450;opacity=40;" vertex="1" parent="1">
+          <mxGeometry x="910" y="15" width="280" height="635" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl-zone-apis" value="SERVICIOS EXTERNOS" style="text;fontStyle=1;fontSize=10;fillColor=none;strokeColor=none;fontColor=#7d0000;align=left;" vertex="1" parent="1">
+          <mxGeometry x="916" y="18" width="220" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CLIENTE BOXES ===== -->
+
+        <mxCell id="browser" value="&lt;b&gt;Navegador Web&lt;/b&gt;&lt;br/&gt;Chrome · Firefox · Safari&lt;br/&gt;&lt;font style=&quot;font-size:9px&quot;&gt;PWA installable&lt;/font&gt;" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="38" width="175" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="pwa" value="&lt;b&gt;PWA Instalada&lt;/b&gt;&lt;br/&gt;Service Worker · Offline&lt;br/&gt;&lt;font style=&quot;font-size:9px&quot;&gt;dewoc-v2 cache&lt;/font&gt;" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="235" y="38" width="175" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="frontend" value="&lt;b&gt;Frontend Libs&lt;/b&gt;&lt;br/&gt;Dashly 1.6 · Bootstrap 5 · DataTables 1.13&lt;br/&gt;Chart.js 4.4 · MP Bricks SDK v2 · JsBarcode" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="430" y="38" width="420" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ROUTER ===== -->
+
+        <mxCell id="router" value="&lt;b&gt;Router&lt;/b&gt;&lt;br/&gt;index.php + .htaccess&lt;br/&gt;URL rewrite → dispatch()" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="190" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== MIDDLEWARE / CORE ===== -->
+
+        <mxCell id="middleware" value="&lt;b&gt;Middleware / Auth&lt;/b&gt;&lt;br/&gt;Csrf::check() · Session::start()&lt;br/&gt;requireAuth() · requireRole()&lt;br/&gt;can() · canView() · canEdit()" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="260" y="180" width="220" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CONTROLLERS GROUP ===== -->
+
+        <mxCell id="bg-ctr" value="" style="rounded=1;fillColor=#f9f9f9;strokeColor=#aaa;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="290" width="810" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="lbl-ctr" value="CONTROLLERS" style="text;fontStyle=1;fontSize=10;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="48" y="295" width="180" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ctr-auth"    value="Auth" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="50"  y="320" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-ventas"  value="Ventas / POS" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="160" y="320" width="110" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-stock"   value="Stock" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="280" y="320" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-caja"    value="Caja" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="390" y="320" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-compras" value="Compras" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="500" y="320" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-recetas" value="Recetas" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="610" y="320" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-chat"    value="Chat IA" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="720" y="320" width="110" height="35" as="geometry"/></mxCell>
+
+        <mxCell id="ctr-tienda"  value="Tienda / Ecommerce" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="50"  y="370" width="150" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-reportes"value="Reportes" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="210" y="370" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-permisos"value="Permisos" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;" vertex="1" parent="1"><mxGeometry x="320" y="370" width="100" height="35" as="geometry"/></mxCell>
+        <mxCell id="ctr-otros"   value="Productos · Clientes · Usuarios · Proveedores · Categorías · Materias Primas · Backup · Docs" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=8;html=1;align=center;" vertex="1" parent="1"><mxGeometry x="430" y="370" width="400" height="35" as="geometry"/></mxCell>
+
+        <!-- CORE CLASSES (inside App zone, below controllers) -->
+        <mxCell id="core" value="&lt;b&gt;Core Classes&lt;/b&gt;  ·  AfipWsaa · AfipWsfe · Mailer · AuditLog · RememberMe · Database (PDO Singleton) · Csrf · Session · Router" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="430" width="810" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== MODELS ===== -->
+
+        <mxCell id="models" value="&lt;b&gt;MODELS (PDO)&lt;/b&gt;&lt;br/&gt;VentaModel · StockModel · ProductosModel · EcommerceModel&lt;br/&gt;CajaModel · RecetaModel · ComprasModel · ClienteModel · PermisosModel" style="rounded=1;fillColor=#f0f0f0;strokeColor=#666;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="540" width="550" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== PERSISTENCIA ===== -->
+
+        <mxCell id="mysql" value="&lt;b&gt;MySQL 5.7+ / 8.0&lt;/b&gt;&lt;br/&gt;dewoc_comercio&lt;br/&gt;25+ tablas · PDO + transacciones" style="shape=cylinder3;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="620" y="540" width="200" height="85" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="files" value="&lt;b&gt;File System&lt;/b&gt;&lt;br/&gt;/uploads · /storage/afip&lt;br/&gt;/storage/logs · /docs" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="635" width="180" height="75" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== EXTERNAL APIs ===== -->
+
+        <mxCell id="api-wsaa"  value="&lt;b&gt;AFIP WSAA&lt;/b&gt;&lt;br/&gt;LoginCms SOAP&lt;br/&gt;Ticket de Acceso (TA)" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="925" y="45" width="250" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="api-wsfe"  value="&lt;b&gt;AFIP WSFE v1&lt;/b&gt;&lt;br/&gt;FECAESolicitar SOAP&lt;br/&gt;FECompUltimoAutorizado" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="925" y="135" width="250" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="api-mp"    value="&lt;b&gt;Mercado Pago REST&lt;/b&gt;&lt;br/&gt;/checkout/preferences (Pro)&lt;br/&gt;/v1/payments (Bricks API)" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="925" y="225" width="250" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="api-claude"value="&lt;b&gt;Anthropic Claude API&lt;/b&gt;&lt;br/&gt;/v1/messages · claude-haiku&lt;br/&gt;Chat IA + NL→SQL (MCP)" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="925" y="315" width="250" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="api-email" value="&lt;b&gt;Email (SMTP/Sendmail)&lt;/b&gt;&lt;br/&gt;Mailer::confirmacionPedido()&lt;br/&gt;Mailer::resetPassword()" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="925" y="405" width="250" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="api-mp-wh" value="&lt;b&gt;MP Webhook IPN&lt;/b&gt;&lt;br/&gt;/tienda/webhook/mp&lt;br/&gt;Confirma pago → actualiza stock" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="925" y="495" width="250" height="70" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ARROWS ===== -->
+
+        <!-- Browser/PWA → Router -->
+        <mxCell id="e-br"  value="HTTP/HTTPS" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="browser" target="router" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-pwa" value=""           style="edgeStyle=orthogonalEdgeStyle;"            edge="1" source="pwa"     target="router" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Router → Middleware -->
+        <mxCell id="e-rm"  value="dispatch" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="router" target="middleware" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Middleware → Controllers group -->
+        <mxCell id="e-mc"  value="route handler" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="middleware" target="ctr-auth" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Controllers → Core -->
+        <mxCell id="e-cc"  value="helpers / services" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="bg-ctr" target="core" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Controllers → Models -->
+        <mxCell id="e-cm"  value="CRUD" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="bg-ctr" target="models" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Models → MySQL -->
+        <mxCell id="e-mdb" value="PDO prepare/execute" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="models" target="mysql" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Ventas → AFIP WSAA -->
+        <mxCell id="e-va"  value="SoapClient sign" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;exitX=1;exitY=0.5;" edge="1" source="ctr-ventas" target="api-wsaa" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- WSAA → WSFE -->
+        <mxCell id="e-aa"  value="TA token" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="api-wsaa" target="api-wsfe" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Tienda → MP -->
+        <mxCell id="e-tm"  value="cURL REST" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;exitX=1;exitY=0.5;" edge="1" source="ctr-tienda" target="api-mp" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Chat → Claude -->
+        <mxCell id="e-cha" value="cURL REST" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;exitX=1;exitY=0.5;" edge="1" source="ctr-chat" target="api-claude" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- Core → Files -->
+        <mxCell id="e-cf"  value="certs / logs / cache" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;" edge="1" source="core" target="files" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <!-- MP Webhook → Tienda (inbound) -->
+        <mxCell id="e-wh"  value="IPN inbound" style="edgeStyle=orthogonalEdgeStyle;fontSize=9;dashed=1;endArrow=open;" edge="1" source="api-mp-wh" target="ctr-tienda" parent="1"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

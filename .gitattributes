@@ -1,0 +1,32 @@
+# Normalizar line endings: LF en el repo, conversión automática en checkout
+* text=auto
+
+# PHP, JS, CSS, HTML → siempre LF en repo
+*.php   text eol=lf
+*.js    text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.json  text eol=lf
+*.sql   text eol=lf
+*.xml   text eol=lf
+*.svg   text eol=lf
+*.drawio text eol=lf
+*.htaccess text eol=lf
+*.env.example text eol=lf
+*.gitignore text eol=lf
+
+# Binarios — sin conversión
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.otf   binary
+*.pdf   binary
+*.zip   binary

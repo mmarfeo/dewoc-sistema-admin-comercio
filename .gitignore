@@ -1,0 +1,44 @@
+# Configuración local y secretos
+config/local.php
+.env
+.env.*
+!.env.example
+
+# Uploads de usuarios (no versionar)
+uploads/
+!uploads/.gitkeep
+
+# Logs y caché
+storage/logs/
+storage/cache/
+storage/sessions/
+
+# AFIP — certificados y caché de token (NUNCA versionar)
+storage/afip/*.pem
+storage/afip/*.key
+storage/afip/ta_cache*.json
+
+# Dumps de base de datos con datos reales
+database/*.dump.sql
+database/backups/
+
+# Dependencias (si se usa Composer)
+vendor/
+
+# Editores e IDE
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.vscode/settings.json
+.idea/
+
+# PHP
+*.phar
+
+# Claude Code — solo excluir settings local (CLAUDE.md sí se versiona)
+.claude/settings.local.json
+
+# install.php — eliminar del servidor en producción
+install.php
