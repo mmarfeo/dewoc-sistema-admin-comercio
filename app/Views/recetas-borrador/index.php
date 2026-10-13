@@ -22,9 +22,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (!$borradores): ?>
-                    <tr><td colspan="8" class="text-center text-muted py-4 small">Todavía no creaste ningún borrador.</td></tr>
-                    <?php endif; ?>
+                    <?php /*
+                      Sin filas NO se dibuja una fila con colspan: DataTables cuenta las
+                      celdas del tbody para validar la tabla y un colspan le da 1 columna
+                      contra las 8 del thead, lo que dispara "Incorrect column count" y
+                      deja la tabla sin inicializar (se pierden el orden y el buscador). El
+                      cartel de tabla vacía lo pone DataTables con language.emptyTable.
+                    */ ?>
                     <?php foreach ($borradores as $b): ?>
                     <tr>
                         <td class="fw-semibold"><?= e($b['nombre']) ?></td>
@@ -64,7 +68,10 @@
 
 <script>
 const BASE_URL='<?= BASE_URL ?>', CSRF_TOKEN='<?= Csrf::token() ?>';
-$(document).ready(()=>$('#tblBorradores').DataTable({order: []}));
+$(document).ready(()=>$('#tblBorradores').DataTable({
+    order: [],
+    language: { emptyTable: 'Todavía no creaste ningún borrador.' }
+}));
 
 function eliminarBorrador(id, nombre) {
     const ejecutar = async () => {

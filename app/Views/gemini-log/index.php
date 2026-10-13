@@ -82,9 +82,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (!$llamadas): ?>
-                    <tr><td colspan="10" class="text-center text-muted small py-3">Sin llamadas en el período.</td></tr>
-                    <?php endif; ?>
+                    <?php /*
+                      Sin filas NO se dibuja una fila con colspan: DataTables cuenta las
+                      celdas del tbody para validar la tabla y un colspan le da 1 columna
+                      contra las 10 del thead, lo que dispara "Incorrect column count" y
+                      deja la tabla sin inicializar (se pierden el orden y el buscador). El
+                      cartel de tabla vacía lo pone DataTables con language.emptyTable.
+                    */ ?>
                     <?php foreach ($llamadas as $l): ?>
                     <tr class="<?= !$l['exito'] ? 'table-danger' : '' ?>">
                         <td class="small"><?= e(date('d/m H:i:s', strtotime($l['created_at']))) ?></td>

@@ -83,9 +83,13 @@ $totalRechazados = count($comprobantes) - $totalAprobados;
                         </td>
                     </tr>
                     <?php endforeach; ?>
-                    <?php if (!$comprobantes): ?>
-                    <tr><td colspan="9" class="text-center text-muted py-4">No hay comprobantes AFIP en el período.</td></tr>
-                    <?php endif; ?>
+                    <?php /*
+                      Sin filas NO se dibuja una fila con colspan: DataTables cuenta las
+                      celdas del tbody para validar la tabla y un colspan le da 1 columna
+                      contra las 9 del thead, lo que dispara "Incorrect column count" y
+                      deja la tabla sin inicializar (se pierden el orden y el buscador). El
+                      cartel de tabla vacía lo pone DataTables con language.emptyTable.
+                    */ ?>
                 </tbody>
             </table>
         </div>
@@ -141,7 +145,11 @@ $totalRechazados = count($comprobantes) - $totalAprobados;
 </div>
 
 <script>
-$(document).ready(()=>$('#tblComprobantes').DataTable({order:[[0,'desc']], paging:true}));
+$(document).ready(()=>$('#tblComprobantes').DataTable({
+    order: [[0, 'desc']],
+    paging: true,
+    language: { emptyTable: 'No hay comprobantes AFIP en el período.' }
+}));
 
 async function verificarAfip(id, btn) {
     btn.disabled = true;

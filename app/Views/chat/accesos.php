@@ -52,9 +52,13 @@
                         </td>
                     </tr>
                     <?php endforeach; ?>
-                    <?php if (!$accesos): ?>
-                    <tr><td colspan="5" class="text-center text-muted py-4">Todavía no hay accesos directos cargados.</td></tr>
-                    <?php endif; ?>
+                    <?php /*
+                      Sin filas NO se dibuja una fila con colspan: DataTables cuenta las
+                      celdas del tbody para validar la tabla y un colspan le da 1 columna
+                      contra las 5 del thead, lo que dispara "Incorrect column count" y
+                      deja la tabla sin inicializar (se pierden el orden y el buscador). El
+                      cartel de tabla vacía lo pone DataTables con language.emptyTable.
+                    */ ?>
                 </tbody>
             </table>
         </div>
@@ -115,7 +119,10 @@ const BASE_URL   = '<?= BASE_URL ?>';
 let   editMode   = false;
 
 $(document).ready(function() {
-    $('#tblAccesos').DataTable({ order: [[0, 'asc']] });
+    $('#tblAccesos').DataTable({
+        order: [[0, 'asc']],
+        language: { emptyTable: 'Todavía no hay accesos directos cargados.' }
+    });
 });
 
 function _showModal(id) {

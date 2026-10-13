@@ -54,13 +54,17 @@
                         <td class="text-end fw-bold"><?= moneda((float)$f['impacto_absoluto_total']) ?></td>
                     </tr>
                     <?php endforeach; ?>
-                    <?php if (!$filas): ?>
-                    <tr><td colspan="7" class="text-center text-muted py-4">Sin cierres en el período seleccionado.</td></tr>
-                    <?php endif; ?>
+                    <?php /*
+                      Sin filas NO se dibuja una fila con colspan: DataTables cuenta las
+                      celdas del tbody para validar la tabla y un colspan le da 1 columna
+                      contra las 7 del thead, lo que dispara "Incorrect column count" y deja
+                      la tabla sin inicializar (se pierden el orden y el buscador). El cartel
+                      de tabla vacía lo pone DataTables con language.emptyTable, abajo.
+                    */ ?>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<script>$(document).ready(()=>$('#tblDiferencias').DataTable({order:[[6,'desc']],language:{emptyTable:'Sin datos'}}));</script>
+<script>$(document).ready(()=>$('#tblDiferencias').DataTable({order:[[6,'desc']],language:{emptyTable:'Sin cierres en el período seleccionado.'}}));</script>
