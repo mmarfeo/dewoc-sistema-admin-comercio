@@ -92,7 +92,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
         <!-- ============================= -->
         <section id="sistema" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-primary-subtle text-primary me-2">1</span>Vista General del Sistema
+                <span class="badge bg-primary-soft text-primary me-2">1</span>Vista General del Sistema
             </h2>
             <p><strong>Dewoc Admin Comercio</strong> es un sistema web de administración integral para comercios argentinos. Incluye gestión de ventas (POS), stock, compras, caja, producción, ecommerce con Mercado Pago, facturación electrónica AFIP y un asistente de IA.</p>
 
@@ -144,7 +144,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
         <!-- MÓDULOS -->
         <section id="modulos" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-primary-subtle text-primary me-2">2</span>Módulos del Sistema
+                <span class="badge bg-primary-soft text-primary me-2">2</span>Módulos del Sistema
             </h2>
             <div class="table-responsive">
                 <table class="table table-hover doc-table">
@@ -182,7 +182,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
 
         <section id="guia-pos" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-success-subtle text-success me-2">POS</span>Guía: Punto de Venta (POS)
+                <span class="badge bg-success-soft text-success me-2">POS</span>Guía: Punto de Venta (POS)
             </h2>
             <div class="row g-3">
                 <div class="col-md-6">
@@ -215,7 +215,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
 
         <section id="guia-ecommerce" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-primary-subtle text-primary me-2">🛒</span>Guía: Ecommerce Público
+                <span class="badge bg-primary-soft text-primary me-2">🛒</span>Guía: Ecommerce Público
             </h2>
             <p class="small text-muted">La tienda pública no requiere login. Está disponible en <code>/tienda</code>.</p>
             <div class="row g-3">
@@ -250,7 +250,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
 
         <section id="guia-stock" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-warning-subtle text-warning me-2">📦</span>Guía: Control de Stock
+                <span class="badge bg-warning-soft text-warning me-2">📦</span>Guía: Control de Stock
             </h2>
             <div class="row g-3">
                 <div class="col-md-4"><h6 class="fw-semibold">Ajuste manual</h6><p class="small">En <code>/stock</code>, botón <strong>Ajuste</strong>: ingresar cantidad positiva (entrada) o negativa (salida) con motivo. El movimiento queda registrado en <code>stock_movimientos</code>.</p></div>
@@ -263,7 +263,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
 
         <section id="guia-caja" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-success-subtle text-success me-2">💰</span>Guía: Caja y Turnos
+                <span class="badge bg-success-soft text-success me-2">💰</span>Guía: Caja y Turnos
             </h2>
             <ol class="small">
                 <li><strong>Abrir turno</strong> en <code>/caja</code>: ingresar monto inicial y observaciones. Solo puede haber 1 turno abierto por usuario.</li>
@@ -276,7 +276,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
 
         <section id="guia-compras" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-secondary-subtle text-secondary me-2">🧾</span>Guía: Facturas de Compra
+                <span class="badge bg-secondary-soft text-secondary me-2">🧾</span>Guía: Facturas de Compra
             </h2>
             <div class="row g-3">
                 <div class="col-md-6">
@@ -301,7 +301,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
 
         <section id="guia-admin" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-danger-subtle text-danger me-2">⚙️</span>Guía: Administración
+                <span class="badge bg-danger-soft text-danger me-2">⚙️</span>Guía: Administración
             </h2>
             <div class="row g-3">
                 <div class="col-md-4">
@@ -333,7 +333,7 @@ pre.code-block { background: #1e1e2e; color: #cdd6f4; border-radius: 6px; paddin
         <!-- ============================= -->
         <section id="arquitectura" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-info-subtle text-info me-2">🏗</span>Arquitectura MVC
+                <span class="badge bg-info-soft text-info me-2">🏗</span>Arquitectura MVC
             </h2>
             <div class="row g-4">
                 <div class="col-md-6">
@@ -419,7 +419,7 @@ canEdit('ventas')       // alias de can('ventas', 'editar')
         <!-- ============================= -->
         <section id="infraestructura" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-secondary-subtle text-secondary me-2">🖥</span>Infraestructura y Requisitos
+                <span class="badge bg-secondary-soft text-secondary me-2">🖥</span>Infraestructura y Requisitos
             </h2>
             <div class="row g-3">
                 <div class="col-md-6">
@@ -467,7 +467,7 @@ RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]</pre>
         <!-- ============================= -->
         <section id="herramientas" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-warning-subtle text-warning me-2">🔧</span>Herramientas y Librerías
+                <span class="badge bg-warning-soft text-warning me-2">🔧</span>Herramientas y Librerías
             </h2>
             <div class="table-responsive">
                 <table class="table table-hover doc-table">
@@ -497,9 +497,9 @@ RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]</pre>
         <!-- ============================= -->
         <section id="base-datos" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-warning-subtle text-warning me-2">🗄</span>Base de Datos
+                <span class="badge bg-warning-soft text-warning me-2">🗄</span>Base de Datos
             </h2>
-            <p class="small text-muted">Base de datos: <code>dewoc_comercio</code> · Charset: <code>utf8mb4</code> · Collation: <code>utf8mb4_unicode_ci</code></p>
+            <p class="small text-muted">Base de datos: <code>u374453216_erp_comercio</code> · Charset: <code>utf8mb4</code> · Collation: <code>utf8mb4_unicode_ci</code></p>
             <div class="table-responsive">
                 <table class="table table-sm doc-table">
                     <thead class="table-light"><tr><th>Tabla</th><th>Descripción</th><th>Columnas clave</th></tr></thead>
@@ -584,7 +584,18 @@ RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]</pre>
                             <tr><td><span class="env-key">AFIP_KEY</span></td><td>Ruta al archivo <code>key.pem</code> (clave privada RSA)</td></tr>
                             <tr><td><span class="env-key">AFIP_KEY_PASS</span></td><td>Passphrase de la clave privada (si tiene)</td></tr>
                             <tr><td><span class="env-key">AFIP_PTO_VENTA</span></td><td>Número de punto de venta habilitado en AFIP</td></tr>
-                            <tr><td><span class="env-key">AFIP_TIPO_CBTE</span></td><td><code>1</code>=Factura A, <code>6</code>=Factura B, <code>11</code>=Factura C</td></tr>
+                            <tr><td><span class="env-key">NEGOCIO_CONDICION_IVA</span></td><td><code>monotributista</code> | <code>responsable_inscripto</code> | <code>exento</code> — define el tipo de comprobante (ver abajo)</td></tr>
+                            <tr><td><span class="env-key">TICKET_ANCHO_MM</span></td><td>Ancho real del rollo de la impresora térmica (50, 58, 80, 100...)</td></tr>
+                            <tr><td><span class="env-key">TICKET_ZOOM_PCT</span></td><td>Zoom del texto impreso (100 = normal, 130 = 30% más grande)</td></tr>
+                        </tbody>
+                    </table>
+                    <h6 class="fw-semibold mt-3">Tipo de comprobante según condición IVA</h6>
+                    <p class="small text-muted mb-1">Ya no se fija con una variable — se calcula por venta en <code>AfipWsfe::tipoComprobante()</code>:</p>
+                    <table class="table table-sm doc-table">
+                        <tbody>
+                            <tr><td>Negocio Monotributista o Exento</td><td>Factura C (11), cualquiera sea el cliente</td></tr>
+                            <tr><td>Negocio Responsable Inscripto + cliente Responsable Inscripto</td><td>Factura A (1)</td></tr>
+                            <tr><td>Negocio Responsable Inscripto + otro cliente</td><td>Factura B (6)</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -680,7 +691,7 @@ APP_URL=http://localhost/01-Dewoc-Sist-Admin-Comercio
 
 # ── Base de datos ────────────────────────────────────────────────
 DB_HOST=localhost
-DB_NAME=dewoc_comercio
+DB_NAME=u374453216_erp_comercio
 DB_USER=root
 DB_PASS=
 
@@ -698,7 +709,17 @@ AFIP_CERT=storage/afip/cert.pem
 AFIP_KEY=storage/afip/key.pem
 AFIP_KEY_PASS=
 AFIP_PTO_VENTA=1
-AFIP_TIPO_CBTE=6             # 1=A, 6=B, 11=C
+
+# ── Datos fiscales del negocio (comprobante ARCA/AFIP) ────────────
+NEGOCIO_CONDICION_IVA=monotributista  # monotributista | responsable_inscripto | exento
+NEGOCIO_IIBB=
+NEGOCIO_INICIO_ACTIVIDADES=
+NEGOCIO_CONDICION_FISCAL=
+NEGOCIO_ORIENTACION_CONSUMIDOR=
+
+# ── Impresora térmica (ticket/comanda) ────────────────────────────
+TICKET_ANCHO_MM=80    # 50, 58, 80, 100...
+TICKET_ZOOM_PCT=130   # 100 = normal, 130 = 30% más grande
 
 # ── Email ────────────────────────────────────────────────────────
 MAIL_ENABLED=false
@@ -711,7 +732,7 @@ MAIL_FROM_NAME=Dewoc Admin</pre>
         <!-- ============================= -->
         <section id="diagramas" class="doc-section mb-5">
             <h2 class="h4 fw-bold border-bottom pb-2 mb-3">
-                <span class="badge bg-info-subtle text-info me-2">📐</span>Diagramas del Sistema
+                <span class="badge bg-info-soft text-info me-2">📐</span>Diagramas del Sistema
             </h2>
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
@@ -810,7 +831,7 @@ MAIL_FROM_NAME=Dewoc Admin</pre>
                     <rect x="10" y="355" width="560" height="60" rx="6" fill="#fff2cc" stroke="#d6b656" stroke-width="1.5"/>
                     <text x="18" y="370" fill="#7d5a00" font-weight="bold" font-size="10">PERSISTENCIA</text>
                     <rect x="20" y="375" width="200" height="32" rx="4" fill="#fff" stroke="#d6b656"/>
-                    <text x="120" y="395" text-anchor="middle" fill="#333">MySQL — dewoc_comercio</text>
+                    <text x="120" y="395" text-anchor="middle" fill="#333">MySQL — u374453216_erp_comercio</text>
                     <rect x="240" y="375" width="160" height="32" rx="4" fill="#fff" stroke="#d6b656"/>
                     <text x="320" y="395" text-anchor="middle" fill="#333">File System</text>
                     <!-- Arrow mysql area -->

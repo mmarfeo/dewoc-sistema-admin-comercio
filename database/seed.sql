@@ -1,5 +1,5 @@
 -- ── Seed inicial ────────────────────────────────────────────
-USE `dewoc_comercio`;
+USE `u374453216_erp_comercio`;
 
 -- Roles
 INSERT IGNORE INTO `roles` (`id`, `nombre`, `descripcion`) VALUES

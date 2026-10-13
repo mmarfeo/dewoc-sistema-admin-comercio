@@ -27,7 +27,7 @@ class Router
         }
 
         // Resolución convencional: /controller/method/param1/param2
-        $controllerName = !empty($segments[0]) ? ucfirst(strtolower($segments[0])) . 'Controller' : 'DashboardController';
+        $controllerName = !empty($segments[0]) ? ucfirst(strtolower($segments[0])) . 'Controller' : 'ChatController';
         $methodName     = $segments[1] ?? 'index';
         $params         = array_slice($segments, 2);
 

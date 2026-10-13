@@ -5,7 +5,7 @@ class DocsController extends Controller
 {
     public function index(): void
     {
-        $this->requireAuth();
+        $this->requireCanView('docs');
         $this->render('docs.index', [
             'pageTitle' => 'Documentación — ' . APP_NAME,
         ]);

@@ -100,7 +100,7 @@
 
         <!-- ===== PERSISTENCIA ===== -->
 
-        <mxCell id="mysql" value="&lt;b&gt;MySQL 5.7+ / 8.0&lt;/b&gt;&lt;br/&gt;dewoc_comercio&lt;br/&gt;25+ tablas · PDO + transacciones" style="shape=cylinder3;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;html=1;align=center;" vertex="1" parent="1">
+        <mxCell id="mysql" value="&lt;b&gt;MySQL 5.7+ / 8.0&lt;/b&gt;&lt;br/&gt;u374453216_erp_comercio&lt;br/&gt;25+ tablas · PDO + transacciones" style="shape=cylinder3;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;html=1;align=center;" vertex="1" parent="1">
           <mxGeometry x="620" y="540" width="200" height="85" as="geometry"/>
         </mxCell>
 

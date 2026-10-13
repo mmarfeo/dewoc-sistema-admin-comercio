@@ -5,13 +5,16 @@ class CategoriaModel extends Model
 {
     protected string $table = 'categorias';
 
-    public function findAllConPadre(?string $tipo = null): array
+    public function findAllConPadre(?string $tipo = null, bool $soloActivas = false): array
     {
         $where  = 'c.eliminado = 0';
         $params = [];
         if ($tipo) {
             $where   .= ' AND c.tipo = :tipo';
             $params['tipo'] = $tipo;
+        }
+        if ($soloActivas) {
+            $where .= ' AND c.activo = 1';
         }
         return $this->queryAll(
             "SELECT c.*, p.nombre AS padre_nombre

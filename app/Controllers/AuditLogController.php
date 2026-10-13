@@ -28,9 +28,11 @@ class AuditLogController extends Controller
 
         $db     = Database::getInstance();
         $sql    = 'SELECT al.* FROM audit_log al WHERE ' . implode(' AND ', $where) . ' ORDER BY al.created_at DESC LIMIT 500';
-        $logs   = $db->query($sql, $params)->fetchAll();
+        $stmt   = $db->prepare($sql);
+        $stmt->execute($params);
+        $logs   = $stmt->fetchAll();
 
-        $modulos = $db->query('SELECT DISTINCT modulo FROM audit_log ORDER BY modulo')->fetchAll(\PDO::FETCH_COLUMN);
+        $modulos  = $db->query('SELECT DISTINCT modulo FROM audit_log ORDER BY modulo')->fetchAll(\PDO::FETCH_COLUMN);
         $acciones = $db->query('SELECT DISTINCT accion FROM audit_log ORDER BY accion')->fetchAll(\PDO::FETCH_COLUMN);
 
         $this->render('audit_log.index', [

@@ -84,9 +84,46 @@
                 </form>
             </div>
         </div>
+
+        <?php if ($webauthnHabilitado): ?>
+        <!-- Acceso con huella/PIN del dispositivo -->
+        <div class="card border-0 mt-4">
+            <div class="card-header border-0 bg-transparent fw-semibold">Acceso con huella / Face ID / PIN</div>
+            <div class="card-body">
+                <p class="text-muted small">Activá esto para entrar más rápido desde este dispositivo, sin escribir tu contraseña cada vez. Tu contraseña sigue funcionando siempre como alternativa.</p>
+
+                <ul id="listaDispositivos" class="list-group list-group-flush mb-3">
+                    <?php foreach ($dispositivos as $d): ?>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-0" data-id="<?= $d['id'] ?>">
+                        <div>
+                            <div class="fw-semibold"><?= e($d['device_name'] ?: 'Dispositivo sin nombre') ?></div>
+                            <div class="text-muted small">
+                                Registrado <?= date('d/m/Y', strtotime($d['created_at'])) ?>
+                                <?php if ($d['last_used_at']): ?> · Último uso <?= date('d/m/Y H:i', strtotime($d['last_used_at'])) ?><?php endif; ?>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-outline-danger btn-sm btnEliminarDispositivo" data-id="<?= $d['id'] ?>">Eliminar</button>
+                    </li>
+                    <?php endforeach; ?>
+                    <?php if (empty($dispositivos)): ?>
+                    <li class="list-group-item px-0 text-muted small" id="itemSinDispositivos">Todavía no activaste ningún dispositivo.</li>
+                    <?php endif; ?>
+                </ul>
+
+                <div class="input-group" style="max-width:420px">
+                    <input type="text" id="inputNombreDispositivo" class="form-control" placeholder="Nombre del dispositivo, ej: Mi celular" maxlength="100">
+                    <button type="button" id="btnActivarDispositivo" class="btn btn-success">Activar en este dispositivo</button>
+                </div>
+                <div id="webauthnPerfilMsg" class="small mt-2 d-none"></div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
+<?php if ($webauthnHabilitado): ?>
+<script src="<?= asset('js/webauthn.js') ?>"></script>
+<?php endif; ?>
 <script>
 const CSRF_TOKEN = '<?= Csrf::token() ?>';
 const BASE_URL   = '<?= BASE_URL ?>';
@@ -146,4 +183,56 @@ document.getElementById('formPassword').addEventListener('submit', async functio
         msgEl.classList.remove('d-none');
     }
 });
+
+if (window.DewocWebauthn) {
+    const btnActivar = document.getElementById('btnActivarDispositivo');
+    const msgWebauthn = document.getElementById('webauthnPerfilMsg');
+
+    function mostrarMsgWebauthn(texto, ok) {
+        msgWebauthn.className = 'small mt-2 ' + (ok ? 'text-success' : 'text-danger');
+        msgWebauthn.textContent = texto;
+    }
+
+    if (!DewocWebauthn.soportado()) {
+        btnActivar.disabled = true;
+        mostrarMsgWebauthn('Este navegador no soporta huella/PIN. Probá desde el celular con la app instalada.', false);
+    }
+
+    btnActivar.addEventListener('click', async function () {
+        const nombre = document.getElementById('inputNombreDispositivo').value.trim();
+        btnActivar.disabled = true;
+        try {
+            await DewocWebauthn.registrar(nombre);
+            mostrarMsgWebauthn('Dispositivo activado correctamente.', true);
+            setTimeout(() => location.reload(), 900);
+        } catch (err) {
+            mostrarMsgWebauthn(err.message || 'No se pudo activar el dispositivo.', false);
+        } finally {
+            btnActivar.disabled = false;
+        }
+    });
+
+    document.querySelectorAll('.btnEliminarDispositivo').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const ejecutar = async () => {
+                const fd = new FormData();
+                fd.append('id', btn.dataset.id);
+                fd.append('_csrf_token', CSRF_TOKEN);
+                const r = await fetch(`${BASE_URL}/webauthn/eliminar-dispositivo`, { method: 'POST', body: fd });
+                const d = await r.json();
+                if (d.ok) {
+                    btn.closest('li').remove();
+                } else {
+                    alert(d.error || 'No se pudo eliminar.');
+                }
+            };
+            const msg = '¿Eliminar este dispositivo?';
+            if (typeof showConfirm === 'function') {
+                showConfirm(msg, ejecutar, { label: 'Eliminar', sub: 'Vas a necesitar tu contraseña para entrar desde ahí.' });
+            } else {
+                if (confirm(msg + ' Vas a necesitar tu contraseña para entrar desde ahí.')) ejecutar();
+            }
+        });
+    });
+}
 </script>

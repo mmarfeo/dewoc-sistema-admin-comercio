@@ -32,6 +32,19 @@
                     <div class="alert alert-<?= e($error['tipo']) ?> py-2 small"><?= e($error['texto']) ?></div>
                 <?php endif; ?>
 
+                <?php if ($webauthnHabilitado): ?>
+                <div id="webauthnBox" class="d-none mb-4">
+                    <button type="button" id="btnLoginBiometrico" class="btn btn-success w-100 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 11c1.5 0 2.5 1 2.5 2.5S13.5 16 12 16s-2.5-1-2.5-2.5S10.5 11 12 11z"/><path d="M12 2a10 10 0 0 0-10 10c0 2 .5 3.5 1.5 5"/><path d="M12 2a10 10 0 0 1 10 10c0 2-.5 3.5-1.5 5"/><path d="M7 20.5A9.96 9.96 0 0 0 12 22a9.96 9.96 0 0 0 5-1.5"/></svg>
+                        Ingresar con huella / Face ID / PIN
+                    </button>
+                    <div id="webauthnMsg" class="small text-danger mt-2 d-none"></div>
+                    <div class="d-flex align-items-center gap-2 my-3 text-muted small">
+                        <hr class="flex-grow-1"><span>o ingresá con tu contraseña</span><hr class="flex-grow-1">
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <form method="POST" action="<?= url('auth/login') ?>" novalidate>
                     <?= Csrf::field() ?>
 
@@ -80,6 +93,11 @@
                     <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
                         Ingresar
                     </button>
+
+                    <!-- Solo se muestra si el navegador detecta que la PWA todavía no está instalada -->
+                    <button type="button" id="btnDescargarApp" class="btn btn-outline-primary w-100 py-2 fw-semibold mt-2 d-none">
+                        📲 Descargar app
+                    </button>
                 </form>
 
             </div>
@@ -96,6 +114,51 @@
             const pwd = document.getElementById('password');
             pwd.type = pwd.type === 'password' ? 'text' : 'password';
         });
+
+        window.APP_BASE = '<?= rtrim(BASE_URL, '/') ?>';
+    </script>
+    <?php if ($webauthnHabilitado): ?>
+    <script src="<?= asset('js/webauthn.js') ?>"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            DewocWebauthn.iniciarBotonLogin({
+                boxEl: document.getElementById('webauthnBox'),
+                btnEl: document.getElementById('btnLoginBiometrico'),
+                msgEl: document.getElementById('webauthnMsg'),
+            });
+        });
+    </script>
+    <?php endif; ?>
+    <script src="<?= url('sw-register.js') ?>"></script>
+    <script>
+        // Botón "Descargar app": el evento beforeinstallprompt solo lo dispara el
+        // navegador cuando la PWA todavía NO está instalada (así "analiza" el estado).
+        (function () {
+            const btn = document.getElementById('btnDescargarApp');
+            const yaInstalada = window.matchMedia('(display-mode: standalone)').matches
+                || window.navigator.standalone === true;
+            if (yaInstalada) return;
+
+            let deferredPrompt = null;
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                btn.classList.remove('d-none');
+            });
+
+            btn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                btn.disabled = true;
+                deferredPrompt.prompt();
+                await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                btn.classList.add('d-none');
+                btn.disabled = false;
+            });
+
+            window.addEventListener('appinstalled', () => btn.classList.add('d-none'));
+        })();
     </script>
 </body>
 </html>

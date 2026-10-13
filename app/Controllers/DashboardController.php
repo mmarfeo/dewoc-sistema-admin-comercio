@@ -5,7 +5,7 @@ class DashboardController extends Controller
 {
     public function index(): void
     {
-        $this->requireAuth();
+        $this->requireCanView('dashboard');
 
         $db = Database::getInstance();
 
@@ -13,8 +13,8 @@ class DashboardController extends Controller
         $hoy = date('Y-m-d');
 
         $ventasHoy = $db->prepare(
-            'SELECT COUNT(*) AS cantidad, COALESCE(SUM(total),0) AS total
-             FROM ventas WHERE DATE(created_at) = ? AND estado = "activa"'
+            'SELECT COUNT(*) AS cantidad, COALESCE(SUM(total_con_iva),0) AS total
+             FROM ventas WHERE DATE(created_at) = ? AND estado = "completada"'
         );
         $ventasHoy->execute([$hoy]);
         $kpiVentas = $ventasHoy->fetch();
@@ -25,7 +25,7 @@ class DashboardController extends Controller
 
         // Stock bajo
         $stockBajo = $db->query(
-            'SELECT "producto" AS tipo, nombre, stock_actual, stock_minimo FROM productos WHERE stock_actual <= stock_minimo AND eliminado = 0 AND activo = 1
+            'SELECT "producto" AS tipo, nombre, stock_actual, stock_minimo FROM productos WHERE stock_actual <= stock_minimo AND eliminado = 0 AND activo = 1 AND controla_stock = 1
              UNION ALL
              SELECT "materia_prima", nombre, stock_actual, stock_minimo FROM materias_primas WHERE stock_actual <= stock_minimo AND eliminado = 0
              UNION ALL
@@ -35,17 +35,17 @@ class DashboardController extends Controller
 
         // Últimas 8 ventas
         $ultimasVentas = $db->query(
-            'SELECT v.id, v.total, v.metodo_pago, v.estado_afip, u.nombre AS cajero, v.created_at
+            'SELECT v.id, v.total_con_iva AS total, v.metodo_pago, v.afip_resultado AS estado_afip, u.nombre AS cajero, v.created_at
              FROM ventas v JOIN usuarios u ON v.usuario_id = u.id
-             WHERE v.estado = "activa"
+             WHERE v.estado = "completada"
              ORDER BY v.created_at DESC LIMIT 8'
         )->fetchAll();
 
         // Ventas últimos 7 días (para gráfico)
         $stmt = $db->prepare(
-            'SELECT DATE(created_at) AS dia, COALESCE(SUM(total),0) AS total
+            'SELECT DATE(created_at) AS dia, COALESCE(SUM(total_con_iva),0) AS total
              FROM ventas
-             WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND estado = "activa"
+             WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND estado = "completada"
              GROUP BY DATE(created_at)
              ORDER BY dia ASC'
         );

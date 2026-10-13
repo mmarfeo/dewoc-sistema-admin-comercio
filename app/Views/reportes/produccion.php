@@ -1,8 +1,21 @@
+<?php
+$_exportQ = http_build_query(array_filter([
+    'tipo'      => 'produccion',
+    'desde'     => $desde,
+    'hasta'     => $hasta,
+    'receta_id' => $filtros['receta_id'] ?: null,
+], fn($v) => $v !== null && $v !== ''));
+?>
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 fw-bold">Reporte de Producción</h1>
-    <button onclick="window.print()" class="btn btn-outline-secondary btn-sm d-print-none">
-        <i class="ti ti-printer me-1"></i> Imprimir
-    </button>
+    <div class="d-flex gap-2 d-print-none">
+        <a href="<?= url('reportes/exportar?' . $_exportQ) ?>" class="btn btn-outline-success btn-sm">
+            <i class="ti ti-table-export me-1"></i> Exportar CSV
+        </a>
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+            <i class="ti ti-printer me-1"></i> Imprimir
+        </button>
+    </div>
 </div>
 
 <!-- Filtros -->
@@ -47,7 +60,7 @@
     <div class="col-sm-6 col-lg-3">
         <div class="card border-0 h-100">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="rounded-3 p-3 bg-<?= $k['color'] ?>-subtle text-<?= $k['color'] ?>">
+                <div class="rounded-3 p-3 bg-<?= $k['color'] ?>-soft text-<?= $k['color'] ?>">
                     <i class="ti <?= $k['icon'] ?> fs-4"></i>
                 </div>
                 <div>
@@ -99,7 +112,7 @@
                     <td class="text-muted small"><?= e($o['producto_nombre'] ?? '—') ?></td>
                     <td class="text-end fw-semibold"><?= number_format((float)$o['cantidad_producida'], 2, ',', '.') ?></td>
                     <td class="text-muted small"><?= e($o['usuario_nombre'] ?? '—') ?></td>
-                    <td><span class="badge bg-success-subtle text-success">Completada</span></td>
+                    <td><span class="badge bg-success-soft text-success">Completada</span></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

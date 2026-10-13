@@ -17,6 +17,7 @@ storage/sessions/
 storage/afip/*.pem
 storage/afip/*.key
 storage/afip/ta_cache*.json
+storage/afip/qr_cache/
 
 # Dumps de base de datos con datos reales
 database/*.dump.sql
@@ -42,3 +43,23 @@ desktop.ini
 
 # install.php — eliminar del servidor en producción
 install.php
+
+# ── Archivos de trabajo que NO van al repositorio ────────────────────────────
+# Quedaron sueltos en la raíz del proyecto: fotos de WhatsApp, PDFs de clientes y
+# exportaciones de la base con datos reales (empleados con sueldos, facturas de
+# proveedores). Versionarlos los deja en el historial de git para siempre, así que se
+# ignoran en vez de commitearlos. Si alguno hace falta, va a docs/ o a una carpeta aparte.
+*.jpeg
+*.jpg
+*.xlsx
+*.pdf
+/*.csv
+chat_*.jpg
+
+# Script de desarrollo que resetea la contraseña del admin a un valor fijo — nunca debe
+# estar en el repositorio ni en el servidor de producción.
+/reset_pass.php
+
+# AFIP: el pedido de certificado es un artefacto de la generación del certificado,
+# no código (el cert.pem y el key.pem ya están ignorados más arriba).
+storage/afip/*.csr

@@ -16,7 +16,7 @@ class BackupController extends Controller
     public function download(): void
     {
         $this->requireRole('admin');
-        Csrf::check();
+        Csrf::check(false); // descarga de archivo directa, no AJAX
 
         while (ob_get_level()) ob_end_clean();
 
@@ -26,8 +26,7 @@ class BackupController extends Controller
         header('Cache-Control: no-store, no-cache');
         header('Pragma: no-cache');
 
-        $conn = Database::getInstance()->getConnection();
-        $this->streamDump($conn);
+        $this->streamDump(Database::getInstance());
         exit;
     }
 

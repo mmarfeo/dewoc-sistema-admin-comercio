@@ -6,10 +6,40 @@
             Si un rol no tiene ningún permiso configurado, conserva acceso completo (estado inicial).
         </p>
     </div>
+    <a href="<?= url('permisos/plantillas') ?>" class="btn btn-outline-primary btn-sm">🧩 Plantillas de permisos →</a>
+</div>
+
+<div class="alert alert-info-soft border-0 small py-2 mb-3">
+    💡 <strong>Nuevo:</strong> además de esta matriz por rol, ahora podés armar
+    <a href="<?= url('permisos/plantillas') ?>">plantillas de permisos</a> reutilizables — se
+    pueden asignar como default de un Rol (reemplazando esta matriz para ese rol) y/o de forma
+    puntual a un usuario concreto desde su ficha en <a href="<?= url('usuarios') ?>">Usuarios</a>.
+    Si un rol ya tiene una plantilla por defecto asignada, editar su matriz acá deja de tener
+    efecto — la fuente de verdad pasa a ser la plantilla.
 </div>
 
 <div class="alert alert-warning border-0 small py-2 mb-4">
     <strong>Atención:</strong> los cambios se aplican en la próxima sesión del usuario. Las sesiones activas mantienen sus permisos actuales hasta que vuelvan a iniciar sesión.
+</div>
+
+<div class="card border-0 mb-4">
+    <div class="card-header border-0 bg-transparent fw-semibold">Login con huella / Face ID / PIN (WebAuthn)</div>
+    <div class="card-body">
+        <p class="text-muted small">
+            Permite que cada usuario active el ingreso rápido con la huella/PIN de su propio dispositivo
+            (como el desbloqueo de WhatsApp), sin dejar de poder entrar con contraseña. Cada usuario debe
+            activarlo desde su perfil — esto solo habilita la opción para todo el sistema.
+        </p>
+        <form id="formConfigSeguridad" novalidate>
+            <?= Csrf::field() ?>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="webauthnHabilitado" name="webauthn_habilitado" value="1" <?= $webauthnHabilitado ? 'checked' : '' ?>>
+                <label class="form-check-label" for="webauthnHabilitado">Habilitar para todo el sistema</label>
+            </div>
+            <div id="configSeguridadMsg" class="small mt-2 d-none"></div>
+            <button type="submit" class="btn btn-primary btn-sm mt-3">Guardar</button>
+        </form>
+    </div>
 </div>
 
 <form id="formPermisos" novalidate>
@@ -156,6 +186,26 @@ document.querySelectorAll('.chk-editar').forEach(chk => {
             if (verChk) verChk.checked = true;
         }
     });
+});
+
+// Submit config de seguridad (toggle WebAuthn)
+document.getElementById('formConfigSeguridad').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const msgEl = document.getElementById('configSeguridadMsg');
+    msgEl.className = 'small mt-2 d-none';
+
+    const fd = new FormData(this);
+    try {
+        const r = await fetch(`${BASE_URL}/permisos/guardar-config-seguridad`, { method: 'POST', body: fd });
+        const d = await r.json();
+        msgEl.className = 'small mt-2 ' + (d.ok ? 'text-success' : 'text-danger');
+        msgEl.textContent = d.ok ? d.mensaje : d.error;
+    } catch {
+        msgEl.className = 'small mt-2 text-danger';
+        msgEl.textContent = 'Error de conexión.';
+    } finally {
+        msgEl.classList.remove('d-none');
+    }
 });
 
 // Submit

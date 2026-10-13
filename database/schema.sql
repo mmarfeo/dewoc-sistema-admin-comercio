@@ -2,9 +2,9 @@
 --  DEWOC — Sistema de Administración de Comercios
 --  Schema MySQL · UTF8MB4
 -- ============================================================
-CREATE DATABASE IF NOT EXISTS `dewoc_comercio`
+CREATE DATABASE IF NOT EXISTS `u374453216_erp_comercio`
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `dewoc_comercio`;
+USE `u374453216_erp_comercio`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -88,7 +88,8 @@ CREATE TABLE IF NOT EXISTS `proveedores` (
   `telefono`      VARCHAR(30)   DEFAULT NULL,
   `email`         VARCHAR(150)  DEFAULT NULL,
   `banco`         VARCHAR(100)  DEFAULT NULL,
-  `cbu`           VARCHAR(22)   DEFAULT NULL,
+  `cbu`           VARCHAR(100)  DEFAULT NULL,
+  `rubro`         VARCHAR(100)  DEFAULT NULL,
   `activo`        TINYINT(1)    NOT NULL DEFAULT 1,
   `eliminado`     TINYINT(1)    NOT NULL DEFAULT 0,
   `created_at`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -102,10 +103,12 @@ CREATE TABLE IF NOT EXISTS `materias_primas` (
   `codigo`          VARCHAR(30)      DEFAULT NULL,
   `nombre`          VARCHAR(150)     NOT NULL,
   `categoria_id`    INT UNSIGNED     DEFAULT NULL,
-  `unidad_medida_id` TINYINT UNSIGNED DEFAULT NULL,
+  `unidad_medida_id`   TINYINT UNSIGNED DEFAULT NULL,
+  `cantidad_contenida` DECIMAL(12,3)    DEFAULT NULL,
   `stock_minimo`    DECIMAL(12,3)    NOT NULL DEFAULT 0,
   `stock_actual`    DECIMAL(12,3)    NOT NULL DEFAULT 0,
   `costo_unitario`  DECIMAL(12,2)    NOT NULL DEFAULT 0,
+  `desvio_pct`      DECIMAL(5,2)     NOT NULL DEFAULT 0 COMMENT 'Pérdida no explicada (robo/rotura/consumo interno), distinta de la merma de receta',
   `proveedor_id`    INT UNSIGNED     DEFAULT NULL,
   `activo`          TINYINT(1)       NOT NULL DEFAULT 1,
   `eliminado`       TINYINT(1)       NOT NULL DEFAULT 0,
@@ -152,6 +155,8 @@ CREATE TABLE IF NOT EXISTS `productos` (
   `unidad_medida_id` TINYINT UNSIGNED DEFAULT NULL,
   `stock_minimo`    DECIMAL(12,3)    NOT NULL DEFAULT 0,
   `stock_actual`    DECIMAL(12,3)    NOT NULL DEFAULT 0,
+  `controla_stock`  TINYINT(1)       NOT NULL DEFAULT 1 COMMENT '0 = siempre disponible, no descuenta stock ni se marca agotado/bajo stock',
+  `desvio_pct`      DECIMAL(5,2)     NOT NULL DEFAULT 0 COMMENT 'Pérdida no explicada (robo/rotura/consumo interno), distinta de la merma de receta',
   `imagen`          VARCHAR(255)     DEFAULT NULL,
   `ecommerce`       TINYINT(1)       NOT NULL DEFAULT 0,
   `activo`          TINYINT(1)       NOT NULL DEFAULT 1,
@@ -171,6 +176,10 @@ CREATE TABLE IF NOT EXISTS `recetas` (
   `producto_id`        INT UNSIGNED  DEFAULT NULL COMMENT 'Producto terminado que genera',
   `rendimiento`        DECIMAL(12,3) NOT NULL DEFAULT 1,
   `unidad_rendimiento` VARCHAR(30)   NOT NULL DEFAULT 'unidades',
+  `descripcion`        TEXT          DEFAULT NULL,
+  `instrucciones`      TEXT          DEFAULT NULL,
+  `tiempo_preparacion` SMALLINT UNSIGNED DEFAULT NULL COMMENT 'minutos',
+  `porciones`          SMALLINT UNSIGNED DEFAULT NULL,
   `notas`              TEXT          DEFAULT NULL,
   `activo`             TINYINT(1)    NOT NULL DEFAULT 1,
   `eliminado`          TINYINT(1)    NOT NULL DEFAULT 0,
@@ -192,6 +201,15 @@ CREATE TABLE IF NOT EXISTS `receta_detalle` (
   PRIMARY KEY (`id`),
   KEY `idx_rd_receta` (`receta_id`),
   CONSTRAINT `fk_rd_receta` FOREIGN KEY (`receta_id`) REFERENCES `recetas` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Producto-Receta (pivote muchos-a-muchos para costo de MP) ─────────────
+CREATE TABLE IF NOT EXISTS `producto_receta` (
+  `producto_id` INT UNSIGNED NOT NULL,
+  `receta_id`   INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`producto_id`, `receta_id`),
+  CONSTRAINT `fk_pr_producto` FOREIGN KEY (`producto_id`) REFERENCES `productos`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pr_receta`   FOREIGN KEY (`receta_id`)   REFERENCES `recetas`(`id`)  ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `recetas_versiones` (
@@ -396,6 +414,31 @@ CREATE TABLE IF NOT EXISTS `inventarios_detalle` (
   CONSTRAINT `fk_id_inventario` FOREIGN KEY (`inventario_id`) REFERENCES `inventarios` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ── Historial de desvíos (pérdida no explicada por ventas ni proceso) ────────
+-- Se genera al hacer un conteo físico de inventario (StockController::guardarInventario()),
+-- no en cualquier ajuste manual suelto (StockController::ajuste()/importar()), porque
+-- esos no representan necesariamente un recuento físico total confiable.
+CREATE TABLE IF NOT EXISTS `desvio_historial` (
+  `id`                        INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  `item_tipo`                 ENUM('producto','materia_prima') NOT NULL,
+  `item_id`                   INT UNSIGNED  NOT NULL,
+  `fecha`                     DATE          NOT NULL,
+  `periodo_desde`             DATETIME      NOT NULL,
+  `cantidad_comprada`         DECIMAL(14,3) NOT NULL DEFAULT 0,
+  `cantidad_explicada_ventas` DECIMAL(14,3) NOT NULL DEFAULT 0,
+  `stock_teorico`             DECIMAL(14,3) NOT NULL DEFAULT 0,
+  `stock_real_contado`        DECIMAL(14,3) NOT NULL DEFAULT 0,
+  `desvio_cantidad`           DECIMAL(14,3) NOT NULL DEFAULT 0,
+  `desvio_pct`                DECIMAL(6,2)  NOT NULL DEFAULT 0,
+  `costo_unitario_momento`    DECIMAL(12,4) NOT NULL DEFAULT 0,
+  `desvio_monto`              DECIMAL(14,2) NOT NULL DEFAULT 0,
+  `usuario_id`                INT UNSIGNED  DEFAULT NULL,
+  `created_at`                DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_dh_item` (`item_tipo`, `item_id`, `fecha`),
+  CONSTRAINT `fk_dh_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ── Movimientos de caja ──────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `caja_movimientos` (
   `id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
@@ -536,3 +579,104 @@ CREATE TABLE IF NOT EXISTS `recetas_versiones` (
   CONSTRAINT `fk_rv_receta`  FOREIGN KEY (`receta_id`)  REFERENCES `recetas` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_rv_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Migración: nuevos campos en detalle de facturas de compra ─────────────────
+ALTER TABLE `facturas_compra_detalle`
+  ADD COLUMN IF NOT EXISTS `cantidad_contenida` DECIMAL(12,3) DEFAULT NULL         AFTER `cantidad`,
+  ADD COLUMN IF NOT EXISTS `descuento_pct`      DECIMAL(5,2)  NOT NULL DEFAULT 0   AFTER `precio_unitario`,
+  ADD COLUMN IF NOT EXISTS `importe_dto`        DECIMAL(14,4) NOT NULL DEFAULT 0   AFTER `descuento_pct`,
+  ADD COLUMN IF NOT EXISTS `monto_no_gravado`   DECIMAL(14,4) NOT NULL DEFAULT 0   AFTER `subtotal_con_iva`,
+  ADD COLUMN IF NOT EXISTS `observaciones`      VARCHAR(255)  DEFAULT NULL          AFTER `monto_no_gravado`;
+
+ALTER TABLE `facturas_compra`
+  ADD COLUMN IF NOT EXISTS `monto_no_gravado`   DECIMAL(14,2) NOT NULL DEFAULT 0   AFTER `subtotal`;
+
+-- ── Galería (multimedia propia del negocio, subida o generada por IA) ────────
+CREATE TABLE IF NOT EXISTS `galeria_archivos` (
+  `id`               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `usuario_id`       INT UNSIGNED NOT NULL,
+  `tipo`             ENUM('imagen','video') NOT NULL,
+  `origen`           ENUM('subido','generado_ia') NOT NULL DEFAULT 'subido',
+  `proveedor_ia`     ENUM('gemini','nvidia') DEFAULT NULL COMMENT 'Solo para origen=generado_ia: qué proveedor generó/está generando este archivo',
+  `nombre_archivo`   VARCHAR(255) NOT NULL,
+  `nombre_original`  VARCHAR(255) DEFAULT NULL,
+  `mime`             VARCHAR(100) NOT NULL,
+  `tamano_bytes`     INT UNSIGNED NOT NULL DEFAULT 0,
+  `estado`           ENUM('listo','generando','error') NOT NULL DEFAULT 'listo',
+  `proveedor_job_id` VARCHAR(150) DEFAULT NULL,
+  `error_mensaje`    VARCHAR(255) DEFAULT NULL,
+  `eliminado`        TINYINT(1)   NOT NULL DEFAULT 0,
+  `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_ga_usuario` (`usuario_id`),
+  CONSTRAINT `fk_ga_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Migración para instalaciones donde galeria_archivos ya existía sin esta columna.
+ALTER TABLE `galeria_archivos`
+  ADD COLUMN IF NOT EXISTS `proveedor_ia` ENUM('gemini','nvidia') DEFAULT NULL AFTER `origen`;
+
+-- ── Migración: cierre de caja ciego (efectivo/Mercado Pago por separado) ─────
+-- Antes de esto, todo ingreso de venta se contaba como si fuera efectivo físico
+-- sin importar el medio de pago. Ver database/caja_diferencias_migration.sql.
+ALTER TABLE `caja_movimientos`
+  ADD COLUMN IF NOT EXISTS `metodo_pago`
+    ENUM('efectivo','debito','credito','transferencia','mercadopago') DEFAULT NULL
+    COMMENT 'Medio de pago de la venta que originó el ingreso. NULL = movimiento manual, se trata como efectivo físico.'
+    AFTER `tipo`;
+
+ALTER TABLE `turnos`
+  ADD COLUMN IF NOT EXISTS `monto_cierre_declarado_efectivo` DECIMAL(14,2) DEFAULT NULL AFTER `monto_cierre_declarado`,
+  ADD COLUMN IF NOT EXISTS `monto_cierre_declarado_mp`       DECIMAL(14,2) DEFAULT NULL AFTER `monto_cierre_declarado_efectivo`,
+  ADD COLUMN IF NOT EXISTS `monto_cierre_calculado_efectivo` DECIMAL(14,2) DEFAULT NULL AFTER `monto_cierre_calculado`,
+  ADD COLUMN IF NOT EXISTS `monto_cierre_calculado_mp`       DECIMAL(14,2) DEFAULT NULL AFTER `monto_cierre_calculado_efectivo`,
+  ADD COLUMN IF NOT EXISTS `diferencia_efectivo`             DECIMAL(14,2) DEFAULT NULL AFTER `diferencia`,
+  ADD COLUMN IF NOT EXISTS `diferencia_mp`                   DECIMAL(14,2) DEFAULT NULL AFTER `diferencia_efectivo`,
+  ADD COLUMN IF NOT EXISTS `cierre_ciego`
+    TINYINT(1) NOT NULL DEFAULT 0
+    COMMENT 'El usuario que cerró no tenía permiso editar en caja (declaró sin ver el esperado)'
+    AFTER `diferencia_mp`;
+
+-- ── Migración: catálogo editable de tipos de concepto de empleados ───────────
+-- Antes viatico/premio/bono/otro era un ENUM fijo. Ver database/empleados_conceptos_tipos_migration.sql.
+CREATE TABLE IF NOT EXISTS `empleados_conceptos_tipos` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `codigo`     VARCHAR(30)  NOT NULL COMMENT 'Clave estable interna (no se edita) — la que se guarda en empleados_conceptos.tipo',
+  `nombre`     VARCHAR(60)  NOT NULL,
+  `color`      VARCHAR(7)   NOT NULL DEFAULT '#6c757d',
+  `orden`      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  `eliminado`  TINYINT(1)   NOT NULL DEFAULT 0,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_ect_codigo` (`codigo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO `empleados_conceptos_tipos` (`codigo`, `nombre`, `color`, `orden`) VALUES
+  ('viatico',   'Viático',   '#0d6efd', 1),
+  ('premio',    'Premio',    '#198754', 2),
+  ('bono',      'Bono',      '#6f42c1', 3),
+  ('aguinaldo', 'Aguinaldo', '#fd7e14', 4),
+  ('otro',      'Otro',      '#6c757d', 9);
+
+ALTER TABLE `empleados_conceptos`  MODIFY COLUMN `tipo`          VARCHAR(30) NOT NULL DEFAULT 'otro';
+ALTER TABLE `gastos_recurrentes`   MODIFY COLUMN `concepto_tipo` VARCHAR(30) NULL DEFAULT 'viatico';
+
+-- ── Migración: Simulador de Recetas (recetas borrador para costear productos nuevos) ─
+-- Ver database/recetas_borrador_migration.sql.
+ALTER TABLE `recetas`
+  ADD COLUMN IF NOT EXISTS `es_borrador` TINYINT(1) NOT NULL DEFAULT 0
+    COMMENT 'Receta hipotética del Simulador — no es una receta de producción real' AFTER `activo`,
+  ADD COLUMN IF NOT EXISTS `precio_venta_estimado` DECIMAL(12,2) DEFAULT NULL AFTER `es_borrador`;
+
+ALTER TABLE `receta_detalle`
+  MODIFY COLUMN `tipo_ingrediente` ENUM('materia_prima','insumo','ingrediente_generico','receta','ingrediente_libre') NOT NULL,
+  ADD COLUMN IF NOT EXISTS `ingrediente_libre_nombre` VARCHAR(120) DEFAULT NULL AFTER `receta_ingrediente_id`,
+  ADD COLUMN IF NOT EXISTS `ingrediente_libre_costo_unitario` DECIMAL(12,2) DEFAULT NULL AFTER `ingrediente_libre_nombre`,
+  ADD COLUMN IF NOT EXISTS `ingrediente_libre_unidad` VARCHAR(20) DEFAULT NULL AFTER `ingrediente_libre_costo_unitario`;
+
+-- ── Migración: pedido del Portal anulado (venta convertida anulada en el POS) ────────
+-- Ver database/pedidos_clientes_anulado_migration.sql.
+ALTER TABLE `pedidos_clientes`
+  MODIFY COLUMN `estado` ENUM('pendiente','aceptado','rechazado','convertido','anulado') NOT NULL DEFAULT 'pendiente';

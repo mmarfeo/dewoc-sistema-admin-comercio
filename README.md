@@ -39,12 +39,12 @@ Desarrollado en PHP + MySQL puro con arquitectura MVC sin frameworks externos.
 1. Clonar o copiar en `c:/xampp/htdocs/01-Dewoc-Sist-Admin-Comercio/`
 2. Crear la base de datos en MySQL:
    ```sql
-   CREATE DATABASE dewoc_comercio CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE DATABASE u374453216_erp_comercio CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    ```
 3. Importar el schema y datos iniciales:
    ```
-   mysql -u root dewoc_comercio < database/schema.sql
-   mysql -u root dewoc_comercio < database/seed.sql
+   mysql -u root u374453216_erp_comercio < database/schema.sql
+   mysql -u root u374453216_erp_comercio < database/seed.sql
    ```
    O bien usar el instalador web: `http://localhost/01-Dewoc-Sist-Admin-Comercio/install.php`
 

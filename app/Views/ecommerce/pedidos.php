@@ -84,7 +84,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     new DataTable('#tblPedidos', {
-        language: DT_LANG_ES,
         stateSave: true,
         scrollX: true,
         fixedHeader: true,

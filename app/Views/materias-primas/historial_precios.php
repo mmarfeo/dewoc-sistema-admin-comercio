@@ -82,6 +82,7 @@ $precioAvg = count($precios) > 0 ? array_sum($precios) / count($precios) : 0;
                     <th>Proveedor</th>
                     <th>Comprobante</th>
                     <th class="text-end">Cantidad</th>
+                    <th class="text-end">Cant. contenida</th>
                     <th class="text-end">Precio unit.</th>
                     <th class="text-end">IVA %</th>
                     <th class="text-end">Subtotal c/IVA</th>
@@ -92,8 +93,13 @@ $precioAvg = count($precios) > 0 ? array_sum($precios) / count($precios) : 0;
                 <tr>
                     <td><?= date('d/m/Y', strtotime($h['fecha'])) ?></td>
                     <td class="fw-semibold"><?= e($h['proveedor']) ?></td>
-                    <td class="text-muted small"><?= e(strtoupper($h['tipo_comprobante'])) ?> <?= e($h['nro_comprobante'] ?? '') ?></td>
+                    <td class="text-muted small">
+                        <a href="<?= url('compras/editar?id=' . (int)$h['factura_id']) ?>" title="Abrir la factura para corregir el precio">
+                            <?= e(strtoupper($h['tipo_comprobante'])) ?> <?= e($h['nro_comprobante'] ?? '') ?>
+                        </a>
+                    </td>
                     <td class="text-end"><?= number_format((float)$h['cantidad'], 3, ',', '.') ?></td>
+                    <td class="text-end text-muted"><?= $h['cantidad_contenida'] !== null ? number_format((float)$h['cantidad_contenida'], 3, ',', '.') : '—' ?></td>
                     <td class="text-end fw-semibold text-primary">$<?= number_format((float)$h['precio_unitario'], 4, ',', '.') ?></td>
                     <td class="text-end"><?= number_format((float)$h['iva_porcentaje'], 1) ?>%</td>
                     <td class="text-end">$<?= number_format((float)$h['subtotal_con_iva'], 2, ',', '.') ?></td>

@@ -17,8 +17,12 @@ class EcommerceModel extends Model
             $params[':cat']           = (int)$filtros['categoria_id'];
         }
         if (!empty($filtros['q'])) {
-            $where[]              = '(p.nombre LIKE :q OR p.descripcion LIKE :q)';
-            $params[':q']         = '%' . $filtros['q'] . '%';
+            // Un placeholder por aparición — :q repetido rompe con prepares reales (no
+            // emulados) con "SQLSTATE[HY093]: Invalid parameter number".
+            $where[]       = '(p.nombre LIKE :q1 OR p.descripcion LIKE :q2)';
+            $like          = '%' . $filtros['q'] . '%';
+            $params[':q1'] = $like;
+            $params[':q2'] = $like;
         }
 
         return $this->queryAll(
@@ -247,15 +251,21 @@ class EcommerceModel extends Model
                     'UPDATE productos SET stock_actual = stock_actual - ? WHERE id = ? AND stock_actual >= ?'
                 )->execute([$item['cantidad'], $item['producto_id'], $item['cantidad']]);
 
+                // OJO: esta inserción usaba nombres de columna que no existen en el esquema
+                // real (tipo_movimiento/notas en vez de tipo_mov/motivo — ver
+                // database/schema.sql:378,384) — como esto corre dentro de una transacción
+                // con rollback en cualquier error, el UPDATE de stock_actual de arriba
+                // también se deshacía en cada intento: el descuento de stock por pedidos de
+                // ecommerce/tienda estaba roto de punta a punta. Corregido acá.
                 $this->db->prepare(
                     "INSERT INTO stock_movimientos
-                     (tipo_item, item_id, tipo_movimiento, cantidad, stock_antes, stock_despues,
-                      origen, usuario_id, notas, created_at)
-                     SELECT 'producto', id,  'salida', ?,
+                     (tipo_item, item_id, tipo_mov, cantidad, stock_antes, stock_despues,
+                      origen, origen_id, usuario_id, motivo, created_at)
+                     SELECT 'producto', id, 'salida', ?,
                             stock_actual + ?, stock_actual,
-                            'venta', NULL, CONCAT('Pedido ecommerce #', ?), NOW()
+                            'venta', ?, NULL, CONCAT('Pedido ecommerce #', ?), NOW()
                      FROM productos WHERE id = ?"
-                )->execute([$item['cantidad'], $item['cantidad'], $pedidoId, $item['producto_id']]);
+                )->execute([$item['cantidad'], $item['cantidad'], $pedidoId, $pedidoId, $item['producto_id']]);
             }
 
             $this->db->prepare(

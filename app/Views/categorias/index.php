@@ -1,9 +1,13 @@
-<!-- ── Título + botón nuevo ──────────────────────────────────── -->
+<!-- ── Título + botones ───────────────────────────────────────── -->
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 fw-bold">Categorías</h1>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCategoria" onclick="abrirNueva()">
-        + Nueva categoría
-    </button>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="me-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importar Excel
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCategoria" onclick="abrirNueva()">+ Nueva categoría</button>
+    </div>
 </div>
 
 <!-- ── Tabla ─────────────────────────────────────────────────── -->
@@ -139,6 +143,42 @@ $(document).ready(function() {
     $('#tblCategorias').DataTable();
 });
 
+// Dashly bundlea Bootstrap sin exponer window.bootstrap: si no está disponible,
+// abrimos el modal haciendo clic en un trigger oculto con data-bs-toggle
+// (Bootstrap sí registra esa delegación de eventos al importarse).
+function _showModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (typeof bootstrap !== 'undefined') {
+        new bootstrap.Modal(el).show();
+    } else {
+        let btn = document.getElementById('_trigger_' + id);
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.id = '_trigger_' + id;
+            btn.type = 'button';
+            btn.hidden = true;
+            btn.setAttribute('data-bs-toggle', 'modal');
+            btn.setAttribute('data-bs-target', '#' + id);
+            document.body.appendChild(btn);
+        }
+        btn.click();
+    }
+}
+function _hideModal(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (typeof bootstrap !== 'undefined') { bootstrap.Modal.getInstance(el)?.hide(); return; }
+    let btn = el.querySelector('[data-bs-dismiss="modal"]');
+    if (!btn) {
+        btn = document.createElement('button');
+        btn.type = 'button'; btn.hidden = true;
+        btn.setAttribute('data-bs-dismiss', 'modal');
+        el.appendChild(btn);
+    }
+    btn.click();
+}
+
 // ── Modal nueva ──────────────────────────────────────────────
 function abrirNueva() {
     editMode = false;
@@ -161,7 +201,7 @@ function abrirEditar(cat) {
     document.getElementById('catActivo').value  = cat.activo;
     document.getElementById('campoActivo').classList.remove('d-none');
     limpiarError();
-    new bootstrap.Modal(document.getElementById('modalCategoria')).show();
+    _showModal('modalCategoria');
 }
 
 // ── Filtrar padres según tipo ────────────────────────────────
@@ -187,7 +227,7 @@ document.getElementById('formCategoria').addEventListener('submit', async functi
         const resp = await fetch(url, { method: 'POST', body: fd });
         const data = await resp.json();
         if (data.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('modalCategoria'))?.hide();
+            _hideModal('modalCategoria');
             showToast(data.mensaje, 'success');
             setTimeout(() => location.reload(), 800);
         } else {
@@ -201,24 +241,30 @@ document.getElementById('formCategoria').addEventListener('submit', async functi
 });
 
 // ── Eliminar ─────────────────────────────────────────────────
-async function eliminar(id, nombre) {
-    if (!confirm(`¿Eliminar la categoría "${nombre}"? Esta acción no se puede deshacer.`)) return;
+function eliminar(id, nombre) {
+    const ejecutar = async () => {
+        const fd = new FormData();
+        fd.append('id', id);
+        fd.append('_csrf_token', CSRF_TOKEN);
 
-    const fd = new FormData();
-    fd.append('id', id);
-    fd.append('_csrf_token', CSRF_TOKEN);
-
-    try {
-        const resp = await fetch(`${BASE_URL}/categorias/eliminar`, { method: 'POST', body: fd });
-        const data = await resp.json();
-        if (data.ok) {
-            showToast(data.mensaje, 'success');
-            setTimeout(() => location.reload(), 800);
-        } else {
-            showToast(data.error || 'No se pudo eliminar.', 'danger');
+        try {
+            const resp = await fetch(`${BASE_URL}/categorias/eliminar`, { method: 'POST', body: fd });
+            const data = await resp.json();
+            if (data.ok) {
+                showToast(data.mensaje, 'success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                showToast(data.error || 'No se pudo eliminar.', 'danger');
+            }
+        } catch {
+            showToast('Error de conexión.', 'danger');
         }
-    } catch {
-        showToast('Error de conexión.', 'danger');
+    };
+    const msg = `¿Eliminar la categoría "${nombre}"?`;
+    if (typeof showConfirm === 'function') {
+        showConfirm(msg, ejecutar, { label: 'Eliminar', sub: 'Esta acción no se puede deshacer.' });
+    } else {
+        if (confirm(msg + ' Esta acción no se puede deshacer.')) ejecutar();
     }
 }
 
@@ -232,3 +278,10 @@ function limpiarError() {
     document.getElementById('modalError').classList.add('d-none');
 }
 </script>
+<?php
+$importUrl       = url('categorias/importar');
+$importPlantilla = url('categorias/plantilla');
+$importModulo    = 'Categorías';
+$importColumnas  = ['nombre *', 'tipo * (producto/materia_prima/insumo)', 'padre', 'descripcion'];
+require BASE_PATH . '/app/Views/partials/modal_importar.php';
+?>

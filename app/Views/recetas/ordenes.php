@@ -177,7 +177,6 @@ const CSRF_TOKEN = '<?= Csrf::token() ?>';
 
 document.addEventListener('DOMContentLoaded', function () {
     new DataTable('#tblOrdenes', {
-        language: DT_LANG_ES,
         stateSave: true,
         scrollX: true,
         fixedHeader: true,
@@ -220,28 +219,35 @@ document.getElementById('formPlanificar').addEventListener('submit', async funct
 });
 
 // ── Cambiar estado de orden ──────────────────────────────────────────────────
-async function cambiarEstado(ordenId, nuevoEstado) {
+function cambiarEstado(ordenId, nuevoEstado) {
     const etiquetas = { en_proceso: 'iniciar', completada: 'completar', anulada: 'anular' };
-    if (!confirm(`¿${(etiquetas[nuevoEstado] || nuevoEstado)} esta orden?`)) return;
+    const ejecutar = async () => {
+        const fd = new FormData();
+        fd.append('_token', CSRF_TOKEN);
+        fd.append('orden_id', ordenId);
+        fd.append('estado',   nuevoEstado);
 
-    const fd = new FormData();
-    fd.append('_token', CSRF_TOKEN);
-    fd.append('orden_id', ordenId);
-    fd.append('estado',   nuevoEstado);
-
-    try {
-        const r = await fetch(`${BASE_URL}/recetas/ordenes/estado`, { method: 'POST', body: fd });
-        const d = await r.json();
-        if (d.ok) {
-            location.reload();
-        } else {
-            const msg = d.faltantes?.length
-                ? 'Stock insuficiente:\n• ' + d.faltantes.join('\n• ')
-                : (d.error || 'Error al cambiar estado.');
-            alert(msg);
+        try {
+            const r = await fetch(`${BASE_URL}/recetas/ordenes/estado`, { method: 'POST', body: fd });
+            const d = await r.json();
+            if (d.ok) {
+                location.reload();
+            } else {
+                const msg = d.faltantes?.length
+                    ? 'Stock insuficiente:\n• ' + d.faltantes.join('\n• ')
+                    : (d.error || 'Error al cambiar estado.');
+                alert(msg);
+            }
+        } catch {
+            alert('Error de conexión.');
         }
-    } catch {
-        alert('Error de conexión.');
+    };
+    const verbo = etiquetas[nuevoEstado] || nuevoEstado;
+    const msg   = `¿${verbo.charAt(0).toUpperCase() + verbo.slice(1)} esta orden?`;
+    if (typeof showConfirm === 'function') {
+        showConfirm(msg, ejecutar, { label: verbo.charAt(0).toUpperCase() + verbo.slice(1), type: nuevoEstado === 'anulada' ? 'danger' : 'primary' });
+    } else {
+        if (confirm(msg)) ejecutar();
     }
 }
 </script>

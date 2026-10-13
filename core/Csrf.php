@@ -22,12 +22,28 @@ class Csrf
         return hash_equals(self::token(), $token);
     }
 
-    /** Lanza excepción si el token no es válido */
-    public static function check(): void
+    /**
+     * Corta la ejecución si el token no es válido.
+     * La inmensa mayoría de los formularios de esta app se envían por fetch()/AJAX y
+     * esperan JSON de vuelta ($json = true, default): responder texto plano ahí rompía
+     * el `await r.json()` del frontend con "Unexpected token" y el usuario no veía
+     * ningún aviso. Los pocos formularios tradicionales (login, recuperar contraseña,
+     * descarga de backup) pasan $json = false para volver a mostrar la página con el error.
+     */
+    public static function check(bool $json = true): void
     {
         if (!self::verify()) {
             http_response_code(403);
-            die('CSRF token inválido.');
+            if ($json) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'ok'    => false,
+                    'error' => 'Tu sesión expiró. Recargá la página e intentá de nuevo.',
+                ]);
+            } else {
+                echo 'CSRF token inválido. Recargá la página e intentá de nuevo.';
+            }
+            exit;
         }
     }
 }

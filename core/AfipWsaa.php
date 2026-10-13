@@ -82,7 +82,8 @@ class AfipWsaa
                 $cert,
                 $key,
                 [],
-                PKCS7_NOOLDMIMETYPE  // attached signature — no PKCS7_DETACHED
+                0  // flags=0: firma adjunta (attached) con headers S/MIME estándar,
+                   // que se descartan más abajo quedándonos solo con el CMS en base64
             );
 
             if (!$ok) {

@@ -12,7 +12,28 @@
             <?php endif; ?>
         <?php endif; ?>
     </div>
-    <a href="<?= url('compras/nueva') ?>" class="btn btn-primary">+ Nueva factura</a>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="me-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Importar Excel
+        </button>
+        <?php
+        $exportParams = array_filter([
+            'proveedor_id' => $filtros['proveedor_id'] ?: null,
+            'desde'        => $filtros['desde']  ?: null,
+            'hasta'        => $filtros['hasta']  ?: null,
+            'estado'       => $filtros['estado'] ?: null,
+        ]);
+        $exportUrl = url('compras/exportar') . ($exportParams ? '?' . http_build_query($exportParams) : '');
+        // URL de retorno (con los filtros activos) para los links de Ver/Editar de cada fila
+        $volverUrl = url('compras') . ($exportParams ? '?' . http_build_query($exportParams) : '');
+        ?>
+        <a href="<?= $exportUrl ?>" class="btn btn-outline-secondary btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" class="me-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Exportar CSV
+        </a>
+        <a href="<?= url('compras/nueva') . '?volver=' . urlencode($volverUrl) ?>" class="btn btn-primary">+ Nueva factura</a>
+    </div>
 </div>
 
 <!-- Filtros -->
@@ -62,6 +83,7 @@
                         <th>#</th><th>Fecha</th><th>Proveedor</th><th>Comprobante</th>
                         <th>Subtotal</th><th>IVA</th><th>Total</th><th>Estado</th>
                         <th class="text-center" style="width:100px">Acciones</th>
+                        <th></th><!-- columna oculta: ítems -->
                     </tr>
                 </thead>
                 <tbody>
@@ -84,16 +106,21 @@
                             <span class="badge <?= $cls ?>"><?= ucfirst($f['estado']) ?></span>
                         </td>
                         <td class="text-center">
-                            <a href="<?= url('compras/ver?id='.$f['id']) ?>" class="btn btn-sm btn-outline-primary py-0" title="Ver detalle">
+                            <a href="<?= url('compras/ver?id='.$f['id']) . '&volver=' . urlencode($volverUrl) ?>" class="btn btn-sm btn-outline-primary py-0" title="Ver detalle">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                             </a>
                             <?php if ($f['estado'] !== 'anulada'): ?>
+                            <a href="<?= url('compras/editar?id='.$f['id']) . '&volver=' . urlencode($volverUrl) ?>" class="btn btn-sm btn-outline-secondary py-0 ms-1" title="Editar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </a>
                             <button class="btn btn-sm btn-outline-danger py-0 ms-1"
                                 onclick="anular(<?= $f['id'] ?>)" title="Anular">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
                             </button>
                             <?php endif; ?>
                         </td>
+                        <!-- ítems ocultos para búsqueda -->
+                        <td class="d-none"><?= e($f['items_nombres'] ?? '') ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -104,12 +131,45 @@
 
 <script>
 const BASE_URL='<?= BASE_URL ?>', CSRF_TOKEN='<?= Csrf::token() ?>';
-$(document).ready(()=>{ $('#tblCompras').DataTable({order:[[0,'desc']]}); });
-async function anular(id){
-    if(!confirm('¿Anular esta factura? Se revertirá el stock ingresado.'))return;
-    const fd=new FormData(); fd.append('id',id); fd.append('_csrf_token',CSRF_TOKEN);
-    const r=await fetch(`${BASE_URL}/compras/anular`,{method:'POST',body:fd});
-    const d=await r.json();
-    d.ok?(showToast(d.mensaje),setTimeout(()=>location.reload(),800)):showToast(d.error,'danger');
+$(document).ready(()=>{
+    $('#tblCompras').DataTable({
+        order: [[0, 'desc']],
+        columnDefs: [{ targets: 9, visible: false, searchable: true }],
+        language: { search: 'Buscar:', searchPlaceholder: 'Proveedor, ítem, nro. comprobante…' },
+    });
+});
+function anular(id){
+    const ejecutar = async () => {
+        const fd=new FormData(); fd.append('id',id); fd.append('_csrf_token',CSRF_TOKEN);
+        const r=await fetch(`${BASE_URL}/compras/anular`,{method:'POST',body:fd});
+        const d=await r.json();
+        d.ok?(showToast(d.mensaje),setTimeout(()=>location.reload(),800)):showToast(d.error,'danger');
+    };
+    if (typeof showConfirm === 'function') {
+        showConfirm('¿Anular esta factura?', ejecutar, { label: 'Anular', sub: 'Se revertirá el stock ingresado.' });
+    } else {
+        if (confirm('¿Anular esta factura? Se revertirá el stock ingresado.')) ejecutar();
+    }
 }
 </script>
+<?php
+$importUrl        = url('compras/importar');
+$importPreviewUrl = url('compras/previsualizar');
+$importPlantilla  = url('compras/plantilla');
+$importModulo     = 'Facturas de Compra';
+$importColumnas   = [
+    'proveedor_razon_social *', 'nro_comprobante *', 'fecha * (AAAA-MM-DD)',
+    'tipo_comprobante (factura_a|factura_b|factura_c|ticket|remito|otro)',
+    'condicion_pago (contado|cuenta_corriente|cheque|transferencia)', 'notas',
+    'tipo_item * (materia_prima|insumo|producto)', 'item_nombre *',
+    'cantidad *', 'cantidad_contenida', 'precio_unitario *',
+    'descuento_pct (% dto, default 0)',
+    'importe (subtotal neto — se calcula si se omite)',
+    'iva_porcentaje (0|10.5|21)',
+    'iva_importe (monto IVA — se calcula si se omite)',
+    'monto_no_gravado (default 0)',
+    'total (importe+iva+no_grav — se calcula si se omite)',
+    'observaciones',
+];
+require BASE_PATH . '/app/Views/partials/modal_importar.php';
+?>

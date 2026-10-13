@@ -1,6 +1,7 @@
 <?php
 require_once BASE_PATH . '/app/Controllers/Controller.php';
 require_once BASE_PATH . '/app/Models/PermisosModel.php';
+require_once BASE_PATH . '/app/Models/ConfiguracionSeguridadModel.php';
 require_once BASE_PATH . '/core/AuditLog.php';
 
 class PermisosController extends Controller
@@ -16,12 +17,25 @@ class PermisosController extends Controller
     {
         $this->requireRole('admin');
         $this->render('permisos.index', [
-            'pageTitle'  => 'Permisos por módulo',
-            'breadcrumb' => ['Administración' => null, 'Permisos por módulo' => null],
-            'roles'      => $this->model->getRoles(),
-            'matrix'     => $this->model->getMatrix(),
-            'modulos'    => PermisosModel::MODULOS,
+            'pageTitle'          => 'Permisos por módulo',
+            'breadcrumb'         => ['Administración' => null, 'Permisos por módulo' => null],
+            'roles'              => $this->model->getRoles(),
+            'matrix'             => $this->model->getMatrix(),
+            'modulos'            => PermisosModel::modulosOrdenados(),
+            'webauthnHabilitado' => (bool)(new ConfiguracionSeguridadModel())->obtener()['webauthn_habilitado'],
         ]);
+    }
+
+    /** Toggle global: habilita/deshabilita el login con huella/PIN (WebAuthn) para todo el sistema */
+    public function guardarConfigSeguridad(): void
+    {
+        $this->requireRole('admin');
+        Csrf::check();
+
+        $habilitado = !empty($_POST['webauthn_habilitado']);
+        (new ConfiguracionSeguridadModel())->guardarWebauthnHabilitado($habilitado);
+        AuditLog::log('config_seguridad_update', 'permisos', 'Login WebAuthn ' . ($habilitado ? 'habilitado' : 'deshabilitado'));
+        $this->json(['ok' => true, 'mensaje' => 'Configuración guardada correctamente.']);
     }
 
     public function guardar(): void

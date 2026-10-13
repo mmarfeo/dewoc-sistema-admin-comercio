@@ -27,7 +27,7 @@ class InsumoModel extends Model
     public function tieneUsoEnRecetas(int $id): bool
     {
         return (bool)$this->queryScalar(
-            "SELECT COUNT(*) FROM receta_detalle WHERE tipo_item = 'insumo' AND item_id = ?",
+            "SELECT COUNT(*) FROM receta_detalle WHERE tipo_ingrediente = 'insumo' AND insumo_id = ?",
             [$id]
         );
     }

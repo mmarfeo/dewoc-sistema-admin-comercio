@@ -1,6 +1,7 @@
 <?php
 require_once BASE_PATH . '/app/Controllers/Controller.php';
 require_once BASE_PATH . '/app/Models/UsuarioModel.php';
+require_once BASE_PATH . '/app/Models/ConfiguracionSeguridadModel.php';
 require_once BASE_PATH . '/core/AuditLog.php';
 require_once BASE_PATH . '/core/RememberMe.php';
 require_once BASE_PATH . '/core/Mailer.php';
@@ -17,74 +18,119 @@ class AuthController extends Controller
     public function loginForm(): void
     {
         if (Session::isLoggedIn()) {
-            redirect('dashboard');
+            redirect(homeUrl());
         }
         // Auto-login si existe cookie "Recordarme" válida
         if (RememberMe::check($this->model)) {
-            redirect('dashboard');
+            redirect(homeUrl());
         }
         $this->view('auth.login', [
-            'pageTitle' => 'Iniciar sesión',
-            'error'     => Session::flash('login_error'),
+            'pageTitle'          => 'Iniciar sesión',
+            'error'              => Session::flash('login_error'),
+            'webauthnHabilitado' => (bool)(new ConfiguracionSeguridadModel())->obtener()['webauthn_habilitado'],
         ]);
     }
 
     public function login(): void
     {
-        Csrf::check();
+        Csrf::check(false); // form tradicional (redirect + flash), no AJAX
 
         $email    = $this->input('email', '');
         $password = $_POST['password'] ?? '';
 
-        if (empty($email) || empty($password)) {
-            Session::flash('login_error', ['tipo' => 'danger', 'texto' => 'Completá todos los campos.']);
+        $resultado = $this->validarCredenciales($email, $password);
+        if (!$resultado['ok']) {
+            $tipo = str_contains($resultado['error'], 'bloqueada') ? 'warning' : 'danger';
+            Session::flash('login_error', ['tipo' => $tipo, 'texto' => $resultado['error']]);
             redirect('auth/login');
         }
 
-        $usuario = $this->model->findByEmail($email);
-
-        if (!$usuario || !$usuario['activo']) {
-            Session::flash('login_error', ['tipo' => 'danger', 'texto' => 'Credenciales incorrectas.']);
-            redirect('auth/login');
-        }
-
-        if ($this->model->estaBloquado($usuario)) {
-            Session::flash('login_error', ['tipo' => 'warning', 'texto' => 'Cuenta bloqueada temporalmente. Intentá en ' . LOGIN_LOCKOUT_MINUTES . ' minutos.']);
-            redirect('auth/login');
-        }
-
-        if (!password_verify($password, $usuario['password_hash'])) {
-            $this->model->registrarIntentoFallido($usuario['id']);
-            logApp("Login fallido para {$email}", 'WARN');
-            AuditLog::log('login_fail', 'auth', "Email: {$email}", (int)$usuario['id'], $usuario['nombre']);
-            Session::flash('login_error', ['tipo' => 'danger', 'texto' => 'Credenciales incorrectas.']);
-            redirect('auth/login');
-        }
-
-        // Login exitoso
-        $this->model->resetIntentos($usuario['id']);
-        Session::regenerate();
-
-        $permisos = $this->model->getPermisos($usuario['rol_id']);
-
-        Session::set('auth_user', [
-            'id'     => $usuario['id'],
-            'nombre' => $usuario['nombre'],
-            'email'  => $usuario['email'],
-            'rol'    => $usuario['rol'],
-            'rol_id' => $usuario['rol_id'],
-            'foto'   => $usuario['foto'],
-        ]);
-        Session::set('permisos', $permisos);
+        $usuario = $resultado['usuario'];
+        $this->iniciarSesion($usuario, 'login');
 
         // Cookie "Recordarme" (30 días)
         if (!empty($_POST['recordarme'])) {
             RememberMe::set($this->model, (int)$usuario['id']);
         }
 
-        logApp("Login exitoso: {$email} | rol: {$usuario['rol']}");
-        AuditLog::log('login', 'auth', "Rol: {$usuario['rol']}", (int)$usuario['id'], $usuario['nombre']);
-        redirect('dashboard');
+        redirect(homeUrl());
+    }
+
+    /**
+     * Reconexión sin perder lo que el usuario estaba haciendo: cuando la sesión expira a
+     * mitad de una acción (ej. una venta en el POS), Controller::requireAuth() responde
+     * con {error:'sesion_expirada'} en vez de redirigir — el wrapper de fetch() en
+     * assets/js/app.js detecta eso y muestra un modal con usuario/contraseña en vez de
+     * mandar al login. Al confirmar acá, se restablece la sesión en el mismo request AJAX,
+     * sin recargar la página, así el estado que tenía el usuario en el navegador (carrito,
+     * formulario a medio llenar) no se pierde. Reusa la misma validación que login(), pero
+     * responde JSON en vez de redirigir/flashear.
+     */
+    public function reconectar(): void
+    {
+        Csrf::check(); // JSON — el frontend usa el csrf_token fresco que ya le mandó el 401 de requireAuth()
+
+        $email    = $this->input('email', '');
+        $password = $_POST['password'] ?? '';
+
+        $resultado = $this->validarCredenciales($email, $password);
+        if (!$resultado['ok']) {
+            $this->json(['ok' => false, 'error' => $resultado['error']], 401);
+        }
+
+        $this->iniciarSesion($resultado['usuario'], 'reconexion');
+        $this->json(['ok' => true, 'mensaje' => 'Sesión renovada.', 'csrf_token' => Csrf::token()]);
+    }
+
+    /** Valida usuario/contraseña sin tocar sesión ni responder nada — compartido por login() y reconectar(). */
+    private function validarCredenciales(string $email, string $password): array
+    {
+        if (empty($email) || empty($password)) {
+            return ['ok' => false, 'error' => 'Completá todos los campos.'];
+        }
+
+        $usuario = $this->model->findByEmail($email);
+
+        if (!$usuario || !$usuario['activo']) {
+            return ['ok' => false, 'error' => 'Credenciales incorrectas.'];
+        }
+
+        if ($this->model->estaBloquado($usuario)) {
+            return ['ok' => false, 'error' => 'Cuenta bloqueada temporalmente. Intentá en ' . LOGIN_LOCKOUT_MINUTES . ' minutos.'];
+        }
+
+        if (!password_verify($password, $usuario['password_hash'])) {
+            $this->model->registrarIntentoFallido($usuario['id']);
+            logApp("Login fallido para {$email}", 'WARN');
+            AuditLog::log('login_fail', 'auth', "Email: {$email}", (int)$usuario['id'], $usuario['nombre']);
+            return ['ok' => false, 'error' => 'Credenciales incorrectas.'];
+        }
+
+        return ['ok' => true, 'usuario' => $usuario];
+    }
+
+    /** Arma la sesión autenticada (login nuevo o reconexión) — extraído para no duplicarlo. */
+    private function iniciarSesion(array $usuario, string $accion): void
+    {
+        $this->model->resetIntentos($usuario['id']);
+        Session::regenerate();
+
+        $permisos = $this->model->getPermisosEfectivos((int)$usuario['id'], (int)$usuario['rol_id']);
+
+        Session::set('auth_user', [
+            'id'              => $usuario['id'],
+            'nombre'          => $usuario['nombre'],
+            'email'           => $usuario['email'],
+            'rol'             => $usuario['rol'],
+            'rol_id'          => $usuario['rol_id'],
+            'foto'            => $usuario['foto'],
+            'pantalla_inicio' => $usuario['pantalla_inicio'],
+            've_tareas_generales' => (bool)($usuario['ve_tareas_generales'] ?? false),
+        ]);
+        Session::set('permisos', $permisos);
+
+        logApp("Login exitoso: {$usuario['email']} | rol: {$usuario['rol']}" . ($accion === 'reconexion' ? ' (reconexión)' : ''));
+        AuditLog::log($accion, 'auth', "Rol: {$usuario['rol']}", (int)$usuario['id'], $usuario['nombre']);
     }
 
     public function logout(): void
@@ -104,7 +150,7 @@ class AuthController extends Controller
     /** Formulario "Olvidé mi contraseña" */
     public function recuperarForm(): void
     {
-        if (Session::isLoggedIn()) redirect('dashboard');
+        if (Session::isLoggedIn()) redirect(homeUrl());
         $this->view('auth.recuperar', [
             'pageTitle' => 'Recuperar contraseña',
             'msg'       => Session::flash('recuperar_msg'),
@@ -114,7 +160,7 @@ class AuthController extends Controller
     /** POST: envía el email de restablecimiento */
     public function recuperar(): void
     {
-        Csrf::check();
+        Csrf::check(false); // form tradicional (redirect + flash), no AJAX
 
         $email   = trim($this->input('email', ''));
         $usuario = $email ? $this->model->findByEmail($email) : false;
@@ -141,7 +187,7 @@ class AuthController extends Controller
     /** Formulario de nueva contraseña (llega desde el link del email) */
     public function resetPasswordForm(): void
     {
-        if (Session::isLoggedIn()) redirect('dashboard');
+        if (Session::isLoggedIn()) redirect(homeUrl());
 
         $token     = $this->param('token', '');
         $tokenHash = $token ? hash('sha256', $token) : '';
@@ -158,7 +204,7 @@ class AuthController extends Controller
     /** POST: guarda la nueva contraseña */
     public function resetPassword(): void
     {
-        Csrf::check();
+        Csrf::check(false); // form tradicional (redirect + flash), no AJAX
 
         $token     = $this->input('token', '');
         $password  = $_POST['password'] ?? '';

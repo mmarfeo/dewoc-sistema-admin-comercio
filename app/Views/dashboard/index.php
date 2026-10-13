@@ -208,7 +208,7 @@
 $dias   = array_map(fn($r) => date('d/m', strtotime($r['dia'])), $ventasSemana);
 $totals = array_map(fn($r) => round($r['total'], 2), $ventasSemana);
 ?>
-<script src="<?= asset('js/chart.js.bundle.js') ?>"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
 new Chart(document.getElementById('chartVentas'), {
     type: 'line',

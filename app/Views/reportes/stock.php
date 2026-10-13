@@ -1,8 +1,22 @@
+<?php
+$_exportQ = http_build_query(array_filter([
+    'tipo'      => 'stock',
+    'desde'     => $desde,
+    'hasta'     => $hasta,
+    'tipo_item' => $filtros['tipo_item'] ?: null,
+    'origen'    => $filtros['origen']    ?: null,
+], fn($v) => $v !== null && $v !== ''));
+?>
 <div class="d-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 fw-bold">Reporte de Movimientos de Stock</h1>
-    <button onclick="window.print()" class="btn btn-outline-secondary btn-sm d-print-none">
-        <i class="ti ti-printer me-1"></i> Imprimir
-    </button>
+    <div class="d-flex gap-2 d-print-none">
+        <a href="<?= url('reportes/exportar?' . $_exportQ) ?>" class="btn btn-outline-success btn-sm">
+            <i class="ti ti-table-export me-1"></i> Exportar CSV
+        </a>
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+            <i class="ti ti-printer me-1"></i> Imprimir
+        </button>
+    </div>
 </div>
 
 <!-- Filtros -->
@@ -57,7 +71,7 @@ foreach ($movimientos as $m) {
     <div class="col-sm-4">
         <div class="card border-0">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="rounded-3 p-3 bg-success-subtle text-success"><i class="ti ti-arrow-up fs-4"></i></div>
+                <div class="rounded-3 p-3 bg-success-soft text-success"><i class="ti ti-arrow-up fs-4"></i></div>
                 <div><div class="fw-bold fs-5"><?= number_format($totalEntradas, 2, ',', '.') ?></div><div class="text-muted small">Total entradas</div></div>
             </div>
         </div>
@@ -65,7 +79,7 @@ foreach ($movimientos as $m) {
     <div class="col-sm-4">
         <div class="card border-0">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="rounded-3 p-3 bg-danger-subtle text-danger"><i class="ti ti-arrow-down fs-4"></i></div>
+                <div class="rounded-3 p-3 bg-danger-soft text-danger"><i class="ti ti-arrow-down fs-4"></i></div>
                 <div><div class="fw-bold fs-5"><?= number_format($totalSalidas, 2, ',', '.') ?></div><div class="text-muted small">Total salidas</div></div>
             </div>
         </div>
@@ -73,7 +87,7 @@ foreach ($movimientos as $m) {
     <div class="col-sm-4">
         <div class="card border-0">
             <div class="card-body d-flex align-items-center gap-3">
-                <div class="rounded-3 p-3 bg-primary-subtle text-primary"><i class="ti ti-list fs-4"></i></div>
+                <div class="rounded-3 p-3 bg-primary-soft text-primary"><i class="ti ti-list fs-4"></i></div>
                 <div><div class="fw-bold fs-5"><?= count($movimientos) ?></div><div class="text-muted small">Movimientos</div></div>
             </div>
         </div>
@@ -119,7 +133,6 @@ foreach ($movimientos as $m) {
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     new DataTable('#tblStock', {
-        language: DT_LANG_ES,
         stateSave: true,
         scrollX: true,
         fixedHeader: true,

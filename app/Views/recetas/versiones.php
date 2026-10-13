@@ -21,7 +21,7 @@
         <div class="accordion accordion-flush" id="accordionVersiones">
         <?php foreach ($versiones as $i => $v): ?>
             <?php
-                $detalle = json_decode($v['detalle_json'], true) ?: [];
+                $detalle  = $v['detalle'] ?? [];
                 $esActual = ($i === 0);
             ?>
             <div class="accordion-item border-0 border-bottom">
@@ -34,6 +34,9 @@
                             <span class="badge <?= $esActual ? 'bg-success' : 'bg-secondary' ?> me-2">v<?= $v['version'] ?></span>
                             <?= e($v['nombre']) ?>
                         </span>
+                        <span class="badge bg-info-soft text-info me-3" style="font-size:1rem" title="Costo total a precios actuales">
+                            <?= moneda($v['costo_total']) ?>
+                        </span>
                         <small class="text-muted fw-normal ms-auto me-3">
                             <?= date('d/m/Y H:i', strtotime($v['created_at'])) ?>
                             <?php if ($v['usuario_nombre']): ?>
@@ -41,7 +44,7 @@
                             <?php endif; ?>
                         </small>
                         <?php if ($esActual): ?>
-                        <span class="badge bg-success-subtle text-success border border-success-subtle me-2">Actual</span>
+                        <span class="badge bg-success-soft text-success me-2">Actual</span>
                         <?php endif; ?>
                     </button>
                 </h2>
@@ -68,6 +71,8 @@
                                         <th>Tipo</th>
                                         <th class="text-end">Cantidad</th>
                                         <th class="text-end">Merma %</th>
+                                        <th class="text-end">Costo Unitario</th>
+                                        <th class="text-end">Costo Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -75,17 +80,25 @@
                                     <tr>
                                         <td><?= e($ing['nombre'] ?: '—') ?></td>
                                         <td>
-                                            <span class="badge <?= $ing['tipo'] === 'materia_prima' ? 'bg-primary-subtle text-primary' : 'bg-info-subtle text-info' ?> border <?= $ing['tipo'] === 'materia_prima' ? 'border-primary-subtle' : 'border-info-subtle' ?>">
-                                                <?= $ing['tipo'] === 'materia_prima' ? 'M. Prima' : 'Insumo' ?>
+                                            <?php
+                                            $tipoLabels = ['materia_prima' => 'M. Prima', 'insumo' => 'Insumo', 'ingrediente_generico' => 'Genérico'];
+                                            $tipoCls    = ['materia_prima' => 'primary', 'insumo' => 'info', 'ingrediente_generico' => 'success'];
+                                            $tc = $tipoCls[$ing['tipo']] ?? 'secondary';
+                                            ?>
+                                            <span class="badge bg-<?= $tc ?>-soft text-<?= $tc ?>">
+                                                <?= $tipoLabels[$ing['tipo']] ?? e($ing['tipo']) ?>
                                             </span>
                                         </td>
                                         <td class="text-end"><?= number_format($ing['cantidad'], 3) ?></td>
                                         <td class="text-end"><?= $ing['merma_pct'] > 0 ? number_format($ing['merma_pct'], 1) . '%' : '—' ?></td>
+                                        <td class="text-end text-muted"><?= moneda($ing['costo_unitario'] ?? 0) ?></td>
+                                        <td class="text-end fw-semibold"><?= moneda($ing['costo_total'] ?? 0) ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
+                        <p class="text-muted small mt-2 mb-0">Costos calculados a precios actuales de cada ingrediente (esta vista guarda la composición de la receta, no un costo histórico).</p>
                         <?php else: ?>
                         <p class="text-muted small mb-0">Sin detalle de ingredientes registrado.</p>
                         <?php endif; ?>

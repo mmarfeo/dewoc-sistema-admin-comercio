@@ -4,6 +4,11 @@ class Session
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            // El hosting suele tener session.gc_maxlifetime más corto que la cookie
+            // (ej. 24 min por defecto), lo que borra la sesión en el servidor antes de
+            // que expire la cookie del navegador y causa "CSRF inválido" en pestañas
+            // abiertas por un rato. Lo alineamos con SESSION_LIFETIME acá.
+            ini_set('session.gc_maxlifetime', (string)SESSION_LIFETIME);
             session_name(SESSION_NAME);
             session_set_cookie_params([
                 'lifetime' => SESSION_LIFETIME,

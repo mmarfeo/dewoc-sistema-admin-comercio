@@ -41,14 +41,15 @@ class RememberMe
         // Restaurar sesión
         Session::regenerate();
         Session::set('auth_user', [
-            'id'     => $usuario['id'],
-            'nombre' => $usuario['nombre'],
-            'email'  => $usuario['email'],
-            'rol'    => $usuario['rol'],
-            'rol_id' => $usuario['rol_id'],
-            'foto'   => $usuario['foto'],
+            'id'              => $usuario['id'],
+            'nombre'          => $usuario['nombre'],
+            'email'           => $usuario['email'],
+            'rol'             => $usuario['rol'],
+            'rol_id'          => $usuario['rol_id'],
+            'foto'            => $usuario['foto'],
+            'pantalla_inicio' => $usuario['pantalla_inicio'],
         ]);
-        Session::set('permisos', $model->getPermisos($usuario['rol_id']));
+        Session::set('permisos', $model->getPermisosEfectivos((int)$usuario['id'], (int)$usuario['rol_id']));
 
         return true;
     }

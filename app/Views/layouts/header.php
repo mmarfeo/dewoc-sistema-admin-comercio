@@ -3,12 +3,54 @@
 
     <!-- Título de página -->
     <div class="d-flex align-items-center">
-        <button class="btn btn-link text-body d-lg-none me-2 p-0" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <!--
+            OJO: la clase ".collapsed" que Bootstrap togglea sola en este botón NO sirve acá
+            para saber si el sidebar está visible. Ese "collapsed" solo refleja el estado de
+            #sidebarCollapse (el <div> con los links), que en escritorio siempre está visible
+            a la fuerza por navbar-expand-lg — no tiene nada que ver con que el sidebar
+            entero se oculte o no. El que sí sabe la verdad es assets/js/app.js: togglea
+            body.sidebar-collapsed (escritorio, ver core CSS) y #mainNavbar.show (mobile,
+            offcanvas) con su propio listener aparte, y eso es lo que hay que mirar acá
+            (ver <style> abajo) — de ahí que la flecha quedara al revés antes.
+        -->
+        <button id="btnSidebarToggle" class="btn btn-link me-2 p-0" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse" title="Mostrar/ocultar menú">
+            <svg class="icon-sidebar-abrir" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <svg class="icon-sidebar-cerrar" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         </button>
+        <style>
+            /* Círculo azul noche, igual al fondo del sidebar, para que se note como botón. */
+            #btnSidebarToggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 2.25rem;
+                height: 2.25rem;
+                border-radius: 50%;
+                background-color: #0d1b3d;
+                color: #fff !important;
+                transition: background-color .15s ease, transform .1s ease;
+            }
+            #btnSidebarToggle:hover { background-color: #16295c; transform: scale(1.06); }
+
+            /* Escritorio (≥992px): sidebar visible = flecha a la izquierda (clickear
+               cierra). Oculto (body.sidebar-collapsed) = flecha a la derecha (clickear
+               abre). */
+            @media (min-width: 992px) {
+                #btnSidebarToggle .icon-sidebar-abrir { display: none; }
+                body.sidebar-collapsed #btnSidebarToggle .icon-sidebar-abrir  { display: inline; }
+                body.sidebar-collapsed #btnSidebarToggle .icon-sidebar-cerrar { display: none; }
+            }
+            /* Mobile (<992px): el sidebar es offcanvas, la visibilidad la marca
+               #mainNavbar.show (no body.sidebar-collapsed, que en mobile no aplica). */
+            @media (max-width: 991.98px) {
+                #btnSidebarToggle .icon-sidebar-cerrar { display: none; }
+                #mainNavbar.show ~ .main-content #btnSidebarToggle .icon-sidebar-cerrar { display: inline; }
+                #mainNavbar.show ~ .main-content #btnSidebarToggle .icon-sidebar-abrir  { display: none; }
+            }
+        </style>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="<?= url('dashboard') ?>">Inicio</a></li>
+                <li class="breadcrumb-item"><a href="<?= url(homeUrl()) ?>">Inicio</a></li>
                 <?php if (!empty($breadcrumb)): ?>
                     <?php foreach ($breadcrumb as $label => $href): ?>
                         <?php if ($href): ?>
@@ -30,15 +72,25 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
 
-        <!-- Notificaciones (futuro) -->
+        <!-- Notificaciones: bandeja genérica in-app, ver docs/tareas-pendientes.md #3 —
+             hoy la alimenta el aviso de reportes por cron, pero la tabla/endpoint son
+             genéricos para que cualquier otro aviso futuro la reutilice. -->
         <div class="dropdown">
-            <button class="btn btn-link text-body p-0 position-relative" data-bs-toggle="dropdown">
+            <button id="btnNotificaciones" class="btn btn-link text-body p-0 position-relative" data-bs-toggle="dropdown">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem">!</span>
+                <span id="badgeNotifCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size:.6rem"></span>
             </button>
-            <div class="dropdown-menu dropdown-menu-end p-3" style="min-width:280px">
+            <div class="dropdown-menu dropdown-menu-end p-3" style="min-width:320px">
                 <h6 class="dropdown-header px-0">Notificaciones</h6>
-                <div class="text-center text-body-secondary py-3 small">Sin notificaciones pendientes</div>
+                <div class="border-bottom pb-2 mb-2">
+                    <button type="button" id="btnPushSubscribe" class="btn btn-outline-primary btn-sm w-100" disabled>
+                        Cargando...
+                    </button>
+                    <div id="pushSubscribeMsg" class="text-muted text-center small mt-1 d-none"></div>
+                </div>
+                <div id="listaNotificaciones" style="max-height:320px;overflow-y:auto">
+                    <div class="text-center text-body-secondary py-3 small">Sin notificaciones pendientes</div>
+                </div>
             </div>
         </div>
 
