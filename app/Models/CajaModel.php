@@ -241,13 +241,26 @@ class CajaModel extends Model
      * si viene, solo trae los turnos abiertos por ese usuario — para que un cajero sin ese
      * permiso no vea las cajas/turnos de otros.
      */
-    public function historial(int $limite = 30, ?int $usuarioIdFiltro = null): array
+    /**
+     * Historial de turnos. Con $estado ('abierto' o 'cerrado') devuelve solo los de ese
+     * estado — los abiertos son los que alguien necesita mirar cuando quiere saber qué
+     * cajas están operando ahora mismo, y mezclados entre 30 filas había que buscarlos a ojo.
+     *
+     * Los abiertos salen SIEMPRE primero, incluso sin filtro: son lo único accionable de
+     * esta pantalla (un turno cerrado ya no se puede tocar).
+     */
+    public function historial(int $limite = 30, ?int $usuarioIdFiltro = null, ?string $estado = null): array
     {
         $params = [':lim' => $limite];
-        $condUsuario = '';
+        $cond   = '';
+
         if ($usuarioIdFiltro !== null) {
-            $condUsuario = ' AND t.usuario_id = :usuario_id';
+            $cond .= ' AND t.usuario_id = :usuario_id';
             $params[':usuario_id'] = $usuarioIdFiltro;
+        }
+        if (in_array($estado, ['abierto', 'cerrado'], true)) {
+            $cond .= ' AND t.estado = :estado';
+            $params[':estado'] = $estado;
         }
 
         return $this->queryAll(
@@ -256,11 +269,60 @@ class CajaModel extends Model
                     COALESCE(t.monto_cierre_calculado, 0) AS total_calculado
              FROM turnos t
              LEFT JOIN usuarios u ON u.id=t.usuario_id
-             WHERE t.eliminado=0{$condUsuario}
-             ORDER BY t.id DESC
+             WHERE t.eliminado=0{$cond}
+             ORDER BY (t.estado = 'abierto') DESC, t.id DESC
              LIMIT :lim",
             $params
         );
+    }
+
+    /**
+     * Turnos abiertos ahora mismo, con lo que el sistema espera encontrar en cada caja:
+     * monto inicial + ingresos − egresos, desglosado por medio de pago.
+     *
+     * OJO con quién ve esto: para un turno abierto son los montos del cierre ESPERADO, y el
+     * cierre ciego (ver cerrar()) existe justamente para que un cajero sin permiso de
+     * edición en Caja declare lo que contó sin saber antes cuánto tendría que haber. El
+     * llamador tiene que respetar ese criterio — ver CajaController::historial().
+     *
+     * @param int|null $usuarioIdFiltro Limita a los turnos de un usuario (permiso ventas_ver_todas)
+     */
+    public function turnosAbiertosConMontos(?int $usuarioIdFiltro = null): array
+    {
+        $params = [];
+        $cond   = '';
+        if ($usuarioIdFiltro !== null) {
+            $cond = ' AND t.usuario_id = :usuario_id';
+            $params[':usuario_id'] = $usuarioIdFiltro;
+        }
+
+        $turnos = $this->queryAll(
+            "SELECT t.*, u.nombre AS usuario_nombre
+             FROM turnos t
+             LEFT JOIN usuarios u ON u.id = t.usuario_id
+             WHERE t.estado = 'abierto' AND t.eliminado = 0{$cond}
+             ORDER BY t.apertura_at",
+            $params
+        );
+
+        // Un turno por cajero: son unas pocas filas, así que se reusa calcularEsperado() tal
+        // cual en vez de rearmar la consulta agrupada. Preferible repetir la consulta chica
+        // que duplicar el criterio de qué cuenta como esperado (ventas anuladas, egresos
+        // manuales como efectivo), que es donde se cometen los errores.
+        foreach ($turnos as &$t) {
+            $esperado = $this->calcularEsperado((int)$t['id'], (float)$t['monto_inicial']);
+            $t['esperado'] = $esperado;
+            // "En caja" = solo el efectivo físico. Lo cobrado por Mercado Pago, débito,
+            // crédito o transferencia no está en el cajón.
+            $t['efectivo_esperado'] = $esperado['efectivo'];
+            $t['electronico']       = round(
+                $esperado['mercadopago'] + $esperado['debito'] + $esperado['credito'] + $esperado['transferencia'],
+                2
+            );
+        }
+        unset($t);
+
+        return $turnos;
     }
 
     /**

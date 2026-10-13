@@ -224,11 +224,24 @@ class CajaController extends Controller
         // Mismo permiso que gatea el listado de Ventas — sin él, cada usuario ve solo los
         // turnos que abrió él mismo, no los de otras cajas/cajeros.
         $usuarioFiltro = canView('ventas_ver_todas') ? null : (int) Session::user()['id'];
+
+        $estado = $this->param('estado', '');
+        if (!in_array($estado, ['abierto', 'cerrado'], true)) $estado = '';
+
+        $cierraCiego = !canEdit('caja');
+
+        // El panel de cajas abiertas muestra el cierre ESPERADO de cada turno. A quien cierra
+        // a ciegas no se le puede mostrar: todo el sentido del cierre ciego es que declare lo
+        // que contó sin saber antes cuánto tendría que haber (ver CajaModel::cerrar()). Para
+        // ese usuario el panel se arma igual, pero sin montos: le sirve para ver qué cajas
+        // están abiertas y desde cuándo.
         $this->render('caja.historial', [
-            'pageTitle'   => 'Historial de Turnos',
-            'breadcrumb'  => ['Caja' => 'caja', 'Historial' => null],
-            'turnos'      => $this->model->historial(30, $usuarioFiltro),
-            'cierraCiego' => !canEdit('caja'),
+            'pageTitle'      => 'Historial de Turnos',
+            'breadcrumb'     => ['Caja' => 'caja', 'Historial' => null],
+            'turnos'         => $this->model->historial(30, $usuarioFiltro, $estado ?: null),
+            'cierraCiego'    => $cierraCiego,
+            'estadoFiltro'   => $estado,
+            'turnosAbiertos' => $this->model->turnosAbiertosConMontos($usuarioFiltro),
         ]);
     }
 
