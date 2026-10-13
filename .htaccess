@@ -1,16 +1,39 @@
 Options -Indexes
 RewriteEngine On
 
+# Normalizar doble slash en la URL
+RewriteCond %{REQUEST_URI} ^//
+RewriteRule ^(.*)$ /$1 [R=301,L]
+
 # Bloquear acceso a directorios sensibles
-RewriteRule ^(config|core|app/Models|app/Controllers|storage|database)/ - [F,L]
+RewriteRule ^(config|core|app/Models|app/Controllers|storage|database|vendor)/ - [F,L]
+
+# Bloquear acceso a archivos "punto" en la raíz (.env, .git, etc.) — a diferencia de las
+# carpetas de arriba, .env es un ARCHIVO que existe físicamente en el servidor, así que la
+# regla catch-all de más abajo (que solo actúa si el archivo pedido NO existe) nunca lo
+# alcanza: sin esto, Apache lo sirve tal cual a quien lo pida, texto plano con las
+# credenciales de la base y las claves de AFIP/Mercado Pago adentro.
+RewriteRule ^\.(?!well-known) - [F,L]
+
+# API de MenuApp: el header Authorization NO siempre llega a PHP. Apache con PHP como CGI/
+# FastCGI (y LiteSpeed) lo descartan por seguridad, así que $_SERVER['HTTP_AUTHORIZATION']
+# aparece vacío y todas las llamadas darían 401 aunque el token sea correcto. Esto lo
+# reinyecta como variable de entorno. Ver docs/integracion-menuapp-checklist.md tarea 1.3 y
+# ApiMenuAppController::bearerToken(), que además prueba las variantes alternativas.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Rutas MVC que coinciden con directorios físicos (deben ir antes de la regla !-d)
+RewriteRule ^docs/?$ index.php?url=docs [QSA,L]
+RewriteRule ^docs/descargar$ index.php?url=docs/descargar [QSA,L]
 
 # Permitir acceso directo a assets, uploads y sw.js
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_URI} !^/assets/
-RewriteCond %{REQUEST_URI} !^/uploads/
-RewriteCond %{REQUEST_URI} !^/sw\.js$
-RewriteCond %{REQUEST_URI} !^/manifest\.json$
+RewriteCond %{REQUEST_URI} !^/+assets/
+RewriteCond %{REQUEST_URI} !^/+uploads/
+RewriteCond %{REQUEST_URI} !/sw\.js$
+RewriteCond %{REQUEST_URI} !/manifest\.json$
 
 # Todo lo demás va al front controller
 RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
@@ -22,5 +45,5 @@ RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Permissions-Policy "geolocation=(), camera=(), microphone=()"
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.datatables.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://cdn.datatables.net https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://code.jquery.com https://cdn.datatables.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://cdn.datatables.net https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: https:; connect-src 'self' https://api.mercadopago.com https://sdk.mercadopago.com https://cdn.datatables.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; frame-src 'self' https://www.mercadopago.com.ar https://www.mercadopago.com"
 </IfModule>

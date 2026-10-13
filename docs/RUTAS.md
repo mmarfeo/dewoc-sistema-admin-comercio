@@ -187,6 +187,7 @@
 |--------|------|-------------------|-------------|
 | GET | `caja` | CajaController#index | Estado del turno actual |
 | POST | `caja/abrir` | CajaController#abrir | Abrir turno |
+| POST | `caja/imputar-cobro-pendiente` | CajaController#imputarCobroPendiente | Imputa al turno una venta cobrada en mano sin turno abierto (MenuApp) |
 | POST | `caja/cerrar` | CajaController#cerrar | Cerrar turno |
 | POST | `caja/movimiento` | CajaController#movimiento | Registrar ingreso/egreso manual |
 | GET | `caja/historial` | CajaController#historial | Historial de turnos |
@@ -237,6 +238,40 @@
 |--------|------|-------------------|-------------|
 | GET | `chat` | ChatController#index | Interfaz de Chat IA |
 | POST | `chat/mensaje` | ChatController#mensaje | Enviar mensaje (AJAX, JSON) |
+
+---
+
+## Integraciones [admin]
+
+Ver `docs/integracion-menuapp-checklist.md`.
+
+| Método | Ruta | Controlador#Método | Descripción |
+|--------|------|-------------------|-------------|
+| GET | `integraciones` / `integraciones/menuapp` | IntegracionesController#menuapp | Pantalla de la integración con MenuApp |
+| POST | `integraciones/generar-token` | IntegracionesController#generarToken | Genera/regenera el token de la API (se muestra una sola vez) |
+| POST | `integraciones/guardar` | IntegracionesController#guardar | URL y secreto del webhook, producto de envío, menú público |
+| POST | `integraciones/activar` | IntegracionesController#activar | Activa o desactiva la integración |
+| POST | `integraciones/probar` | IntegracionesController#probar | Envía un webhook `ping` firmado |
+
+---
+
+## API de MenuApp (sin sesión — token Bearer)
+
+No pasan por `core/Router.php`: se resuelven en un bloque propio de `index.php`, antes del
+dispatch (el Router no sabe extraer un parámetro del medio de la URL). **No usan sesión ni
+CSRF**: cada acción valida `Authorization: Bearer <token>` con `requireApiToken()`.
+
+Respuestas JSON UTF-8. Códigos: `401` token inválido o integración apagada · `404`
+inexistente · `409` falta stock · `422` datos inválidos · `429` más de 120 req/min.
+
+| Método | Ruta | Controlador#Método | Descripción |
+|--------|------|-------------------|-------------|
+| GET | `api/menuapp/v1/estado` | ApiMenuAppController#estado | Identidad de la instalación (UUID fijo, comercio, CUIT) y si la caja está abierta |
+| GET | `api/menuapp/v1/catalogo[?desde=ISO8601]` | ApiMenuAppController#catalogo | Catálogo del menú online (con `?desde`, solo los cambios; los despublicados vienen con `visible: false`) |
+| GET | `api/menuapp/v1/disponibilidad` | ApiMenuAppController#disponibilidad | Qué productos y gustos se pueden vender ahora |
+| POST | `api/menuapp/v1/ventas` | ApiMenuAppController#ventas | Registra un pedido aceptado como venta (idempotente por `referencia`; no mueve la caja; `409 caja_cerrada` si no hay turno abierto) |
+| POST | `api/menuapp/v1/ventas/{referencia}/cobrar` | ApiMenuAppController#cobrar | Pedido entregado y cobrado en mano: entra a la caja del turno abierto |
+| POST | `api/menuapp/v1/ventas/{referencia}/anular` | ApiMenuAppController#anular | Cancela un pedido ya aceptado: repone la MP y revierte el cobro |
 
 ---
 
