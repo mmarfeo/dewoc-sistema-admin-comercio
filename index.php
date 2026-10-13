@@ -122,6 +122,17 @@ $router->post('galeria/generar',       'GaleriaController', 'generar');
 $router->post('galeria/generar-video', 'GaleriaController', 'generarVideo');
 $router->get('galeria/estado',         'GaleriaController', 'estado');
 
+// Fotos del menú online (ver docs/integracion-menuapp-checklist.md, etapa 8). Rutas
+// exactas porque los nombres llevan guión: la resolución convencional del Router buscaría
+// un método "fotos-menu", que no es un identificador PHP válido.
+$router->get('galeria/fotos-menu',                   'FotosMenuController', 'index');
+$router->get('galeria/fotos-menu/producto',          'FotosMenuController', 'producto');
+$router->post('galeria/fotos-menu/subir',            'FotosMenuController', 'subirCandidata');
+$router->post('galeria/fotos-menu/mejorar',          'FotosMenuController', 'mejorar');
+$router->post('galeria/fotos-menu/oficial',          'FotosMenuController', 'elegirOficial');
+$router->post('galeria/fotos-menu/descartar',        'FotosMenuController', 'descartar');
+$router->post('galeria/fotos-menu/volver-anterior',  'FotosMenuController', 'volverAnterior');
+
 // Categorías
 $router->get('categorias',             'CategoriasController', 'index');
 $router->post('categorias/crear',      'CategoriasController', 'crear');

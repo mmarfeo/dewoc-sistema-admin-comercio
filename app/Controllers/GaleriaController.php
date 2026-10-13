@@ -1,6 +1,7 @@
 <?php
 require_once BASE_PATH . '/app/Controllers/Controller.php';
 require_once BASE_PATH . '/app/Models/GaleriaModel.php';
+require_once BASE_PATH . '/core/GeminiImagen.php';
 
 class GaleriaController extends Controller
 {
@@ -13,7 +14,9 @@ class GaleriaController extends Controller
 
     public function index(): void
     {
-        $this->requireAuth();
+        // Antes esto era requireAuth(): cualquier usuario logueado entraba y podía gastar
+        // IA, que se paga por llamada (ver tarea 8.8 de docs/integracion-menuapp-checklist.md).
+        $this->requireCanView('galeria');
         $tipo = $this->param('tipo', '');
         $this->render('galeria.index', [
             'pageTitle'  => 'Galería',
@@ -25,7 +28,7 @@ class GaleriaController extends Controller
 
     public function subir(): void
     {
-        $this->requireAuth();
+        $this->requireCanEdit('galeria');
         Csrf::check();
 
         $usuarioId = (int)(Session::user()['id'] ?? 0);
@@ -52,7 +55,13 @@ class GaleriaController extends Controller
     /** GET: sirve el archivo con auth (imagen o video) */
     public function ver(): void
     {
+        // Sirve archivos privados de storage/galeria/. Las candidatas de las Fotos del menú
+        // se muestran por acá, así que también entra quien tenga ese permiso aunque no
+        // tenga la Galería completa.
         $this->requireAuth();
+        if (!canView('galeria') && !canView('fotos_menu')) {
+            abort(403, 'No tenés permiso para ver este archivo.');
+        }
         $id      = (int)$this->param('id');
         $archivo = $id ? $this->model->findById($id) : null;
 
@@ -72,7 +81,7 @@ class GaleriaController extends Controller
 
     public function eliminar(): void
     {
-        $this->requireAuth();
+        $this->requireCanEdit('galeria');
         Csrf::check();
 
         $id = (int)$this->input('id', 0);
@@ -95,7 +104,7 @@ class GaleriaController extends Controller
     public function generar(): void
     {
         set_time_limit(120);
-        $this->requireAuth();
+        $this->requireCanEdit('galeria');
         Csrf::check();
 
         $archivoId   = (int)$this->input('archivo_id', 0);
@@ -199,7 +208,9 @@ class GaleriaController extends Controller
      */
     public function generarVideo(): void
     {
-        $this->requireAuth();
+        // El video es la llamada de IA más cara de todas: nunca debería alcanzar con tener
+        // sesión iniciada (ver tarea 8.8 de docs/integracion-menuapp-checklist.md).
+        $this->requireCanEdit('galeria');
         Csrf::check();
 
         $archivoId   = (int)$this->input('archivo_id', 0);
@@ -257,7 +268,7 @@ class GaleriaController extends Controller
     /** GET: consulta el estado de un archivo (usado para el polling de video) */
     public function estado(): void
     {
-        $this->requireAuth();
+        $this->requireCanView('galeria');
         $id      = (int)$this->param('id');
         $archivo = $id ? $this->model->findById($id) : null;
 

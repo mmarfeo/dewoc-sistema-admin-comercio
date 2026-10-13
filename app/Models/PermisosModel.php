@@ -76,6 +76,13 @@ class PermisosModel extends Model
         'integraciones'     => 'Integraciones (MenuApp)',
         'chat'              => 'Chat IA',
         'galeria'           => 'Galería',
+        // Fotos del menú online (ver docs/integracion-menuapp-checklist.md, etapa 8), en
+        // dos niveles a propósito: el empleado PROPONE candidatas y alguien con criterio
+        // DECIDE cuál ve el cliente. Separado del permiso de Productos, que además deja
+        // cambiar precios y recetas. Si el comercio quiere que cualquiera publique,
+        // alcanza con darle los dos permisos al mismo rol.
+        'fotos_menu'          => 'Fotos del menú: sacar y proponer candidatas',
+        'fotos_menu_publicar' => 'Fotos del menú: elegir la foto oficial que ve el cliente',
         'solicitudes'       => 'Solicitudes',
         'tareas_asignar'    => 'Tareas: Asignar a trabajadores',
         'docs'              => 'Documentación',
@@ -109,6 +116,8 @@ class PermisosModel extends Model
         'reportes_margen_producto'     => 'reportes/margen-ventas',
         'reportes_proyecciones'        => 'proyecciones',
         'ecommerce'                    => 'ecommerce/pedidos',
+        'fotos_menu'                   => 'galeria/fotos-menu',
+        'fotos_menu_publicar'          => 'galeria/fotos-menu',
         'integraciones'                => 'integraciones/menuapp',
         'pagos_proveedores'            => 'pagos-proveedores',
         'cobros_clientes'              => 'cobros-clientes',

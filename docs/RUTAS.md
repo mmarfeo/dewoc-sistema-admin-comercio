@@ -241,6 +241,23 @@
 
 ---
 
+## Fotos del menú
+
+Permiso `fotos_menu` para proponer candidatas; `fotos_menu_publicar` para elegir la oficial
+que ve el cliente. Ver `docs/integracion-menuapp-checklist.md`, etapa 8.
+
+| Método | Ruta | Controlador#Método | Descripción |
+|--------|------|-------------------|-------------|
+| GET | `galeria/fotos-menu` | FotosMenuController#index | Productos del menú, los sin foto primero |
+| GET | `galeria/fotos-menu/producto?id=X` | FotosMenuController#producto | Vista previa con los dos recortes de MenuApp |
+| POST | `galeria/fotos-menu/subir` | FotosMenuController#subirCandidata | Sube una candidata (máx. 3 por producto) |
+| POST | `galeria/fotos-menu/mejorar` | FotosMenuController#mejorar | Mejora una candidata con IA (opciones fijas) |
+| POST | `galeria/fotos-menu/oficial` | FotosMenuController#elegirOficial | Publica la foto en el menú **[fotos_menu_publicar]** |
+| POST | `galeria/fotos-menu/descartar` | FotosMenuController#descartar | Descarta una candidata |
+| POST | `galeria/fotos-menu/volver-anterior` | FotosMenuController#volverAnterior | Restaura la foto oficial previa **[fotos_menu_publicar]** |
+
+---
+
 ## Integraciones [admin]
 
 Ver `docs/integracion-menuapp-checklist.md`.

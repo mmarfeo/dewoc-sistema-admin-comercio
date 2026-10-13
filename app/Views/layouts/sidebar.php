@@ -530,6 +530,14 @@ function sidebarGroupLabel(string $groupSlug, string $label): void {
                         Chat con IA
                     </a>
                 </li>
+                <?php if (canView('fotos_menu')): ?>
+                <li class="nav-item collapse show nav-group-chat <?= sidebarActive('fotos_menu', $currentMod) ?>">
+                    <a class="nav-link" href="<?= url('galeria/fotos-menu') ?>">
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="18" width="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        Fotos del menú
+                    </a>
+                </li>
+                <?php endif; ?>
                 <?php if (canView('galeria')): ?>
                 <li class="nav-item collapse show nav-group-chat <?= sidebarActive('galeria', $currentMod) ?>">
                     <a class="nav-link" href="<?= url('galeria') ?>">

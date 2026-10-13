@@ -13,6 +13,11 @@
 > **Actualización 2026‑10‑13:** el menú abre y cierra con la **caja de Dewoc** (D10 a D13). Se suman
 > `GET /estado`, los avisos `caja.abierta`/`caja.cerrada` y la **etapa 6**. El licenciamiento queda como
 > **etapa 7**, para antes de vender Dewoc a terceros. MenuApp ya implementó su parte.
+>
+> **Actualización 2026‑10‑13 (2):** **etapa 8**, "Fotos del menú" dentro de la Galería: cada producto
+> tiene una **vista previa igual a la del menú**, con hasta **3 fotos candidatas** (sacadas con el celular
+> o mejoradas con IA). Los empleados proponen y el encargado elige la **oficial**. MenuApp la toma sola,
+> sin cambios de su lado.
 
 ---
 
@@ -248,11 +253,12 @@ Cuando cambia algo del catálogo, Dewoc avisa y **MenuApp vuelve a pedir `/catal
 
 ## 4. Tareas
 
-> **Estado al 2026‑10‑13:** etapas 0 a 4 y **6** implementadas en el código. Queda
-> **pendiente de ejecución** la migración `database/menuapp_integracion_migration.sql`
-> sobre la base, y las tareas que son trabajo de datos o de otro sistema: **1.4** (revisar
-> los productos de Serendipia), la sección 5 (pruebas end‑to‑end, que necesitan la base
-> migrada), la **etapa 5** (eliminar la tienda online), que el propio plan deja para el
+> **Estado al 2026‑10‑13:** etapas 0 a 4, **6** y **8** implementadas en el código. Quedan
+> **pendientes de ejecución** las migraciones `database/menuapp_integracion_migration.sql`
+> y `database/fotos_menu_migration.sql` sobre la base, y las tareas que son trabajo de
+> datos, de prueba en dispositivos reales o de otro sistema: **1.4** (revisar los productos
+> de Serendipia), la sección 5 y las pruebas de la etapa 8 (necesitan la base migrada y un
+> celular), la **etapa 5** (eliminar la tienda online), que el propio plan deja para el
 > final, y la **etapa 7** (licenciamiento), que el plan marca como futura.
 
 ### Etapa 0 · Preparar Dewoc
@@ -396,6 +402,101 @@ Cuando cambia algo del catálogo, Dewoc avisa y **MenuApp vuelve a pedir `/catal
   - mostrar el identificador de la instalación y el estado de la caja tal como lo ve MenuApp;
   - **promoción (D13):** si la integración no está activa, mostrar una tarjeta "Vendé online con MenuApp", con sus beneficios (menú con fotos, pedidos por delivery, retiro y mesa, cobro con Mercado Pago) y un enlace a `https://menuapp.dewoc.com`.
 
+### Etapa 8 · Fotos del menú desde la Galería (vista previa, candidatas y cámara del celular)
+
+> **Objetivo:** que un empleado, desde el celular, saque o elija hasta **3 fotos candidatas** por
+> producto, las mejore con IA si hace falta, las vea **tal como van a quedar en el menú** y elija
+> cuál es la **oficial**, sin tocar precios ni recetas. Ninguna foto del menú queda suelta: todas
+> nacen ya asignadas a un producto.
+> **MenuApp no necesita cambios:** cuando cambia `productos.imagen`, el aviso `catalogo.cambio` hace
+> que MenuApp descargue la foto oficial, la optimice y la enderece.
+
+Lo que ya existe y se reutiliza:
+- **Subida:** `GaleriaController::subir()` guarda en `storage/galeria/` (privado), en la tabla `galeria_archivos`, con origen `subido`. El límite es de 5 MB.
+- **Edición con IA:** `GaleriaController::generar()` recibe una foto de la galería y una instrucción libre. Usa Gemini (`GEMINI_MEDIA_API_KEY`) o NVIDIA y guarda el resultado con origen `generado_ia` y su `proveedor_ia`.
+- **Uso de Gemini:** ya se registra (módulos de uso y logs de Gemini).
+
+Problemas de hoy que esta etapa resuelve:
+- `ProductosController::subirImagen()` **descarta sin avisar** las fotos de más de 5 MB. Una foto de un celular actual suele pesar entre 3 y 12 MB.
+- Dewoc guarda la foto tal cual: sin achicar y sin corregir la rotación EXIF.
+- Para cambiar una foto hace falta permiso de edición de **Productos**, que también deja cambiar precios y recetas.
+- La Galería solo pide sesión iniciada (`requireAuth()`): cualquier usuario puede gastar IA.
+- Las fotos de la Galería no están asociadas a nada: no se sabe a qué producto corresponde cada una.
+
+Cómo se ve la foto en MenuApp (la vista previa tiene que imitar exactamente esto):
+- **Tarjeta del listado:** foto arriba en **4:3**, recortada al centro (`object-fit: cover`), con el nombre, la descripción corta y el precio final debajo.
+- **Detalle del producto** (al tocar la tarjeta): foto a todo el ancho, de **hasta 240 px de alto**, recortada al centro. Es un recorte más ancho que el 4:3: una foto puede verse bien en la tarjeta y cortar el producto en el detalle.
+- **Sin foto:** un recuadro gris con un ícono.
+- **Agotado:** la tarjeta en escala de grises y semitransparente.
+
+- [x] **8.1 Fotos asociadas al producto, con estado.** Migración idempotente en `galeria_archivos`:
+  - `producto_id INT UNSIGNED NULL`, FK a `productos` con `ON DELETE SET NULL`, e índice;
+  - `estado_menu ENUM('candidata','oficial','anterior','descartada') NULL`. NULL = foto de la Galería sin relación con el menú, por ejemplo para redes sociales;
+  - `mejorada_ia TINYINT(1) NOT NULL DEFAULT 0` y `origen_id INT UNSIGNED NULL` (la foto de la que sale una versión mejorada).
+- [x] **8.2 Pestaña "Fotos del menú" en la Galería**, pensada primero para el celular:
+  - lista de los productos marcados para el menú (`ecommerce = 1`, activos), con buscador y filtro por categoría;
+  - **primero los que no tienen foto oficial**;
+  - cada producto muestra su estado: "Sin foto", "Oficial + 2 candidatas", etc.
+  - Al tocar un producto se abre **su vista previa** (8.3). Las fotos se suben siempre desde ahí, así que nunca quedan sueltas.
+- [x] **8.3 Vista previa del producto, igual que en el menú:**
+  - arriba, la **tarjeta tal como se ve en MenuApp**, con la foto oficial (o el recuadro "Sin foto"), el nombre, la descripción y el **precio final** (`PrecioHelper::precioFinalOnline()`);
+  - debajo, el **detalle** con el recorte ancho;
+  - más abajo, las **candidatas (hasta 3)**, cada una dibujada **en los dos recortes**, para comparar cómo queda de verdad en el menú;
+  - cada candidata tiene sus acciones: **"Elegir como oficial"**, **"Mejorar con IA"** y **"Descartar"**;
+  - un enlace **"Ver en el menú real"** abre el producto en MenuApp (con la URL del menú configurada en Integraciones).
+  - El tamaño y el recorte tienen que coincidir con los de MenuApp: tarjeta en 4:3 y detalle con un alto máximo de 240 px, siempre con `object-fit: cover`. Conviene armarla con un CSS propio que imite la tarjeta, no con un iframe de MenuApp.
+- [x] **8.4 Sacar o elegir una foto candidata:**
+  - dos botones grandes en la vista previa: **"Sacar foto"** (`<input type="file" accept="image/*" capture="environment">`, abre directo la cámara trasera) y **"Elegir de la galería"** (el mismo input sin `capture`);
+  - **achicar en el navegador antes de subir:** con un `canvas`, a 1600 px de lado mayor y JPEG calidad 0,85. Así nunca supera los 5 MB, sube rápido con mala señal y gasta menos datos;
+  - **antes de subir se ve en los dos recortes**, para que el empleado encuadre el producto bien centrado;
+  - se guarda con `producto_id` y `estado_menu = 'candidata'`.
+- [x] **8.5 Tope de 3 candidatas por producto:**
+  - con 3 candidatas, los botones de subir y de mejorar se deshabilitan con el mensaje "Descartá una para sumar otra";
+  - el tope se controla **en el servidor**, no solo en la pantalla;
+  - la foto oficial no cuenta para el tope;
+  - las descartadas no se borran del disco de inmediato: se pueden limpiar a los 30 días con un cron.
+- [x] **8.6 "Mejorar con IA"** sobre una candidata, con **opciones fijas en vez de texto libre**:
+  - "Mejorar luz y color";
+  - "Fondo limpio claro";
+  - "Fondo de madera";
+  - "Centrar y enderezar".
+  - Cada opción usa una instrucción armada en el código, que **siempre** agrega: *"No agregues, quites ni cambies el producto: mantené su forma, tamaño, porción, toppings, colores y cantidad. Solo modificá luz, color, fondo o encuadre."*
+  - El resultado se agrega como **otra candidata** (`mejorada_ia = 1`, `origen_id` = la original). Así se comparan las dos en la vista previa y la IA cuenta para el tope de 3.
+  - Si el modelo responde solo con texto, se muestra el mensaje y no se crea nada.
+- [x] **8.7 "Elegir como oficial":**
+  - copia la candidata de `storage/galeria/` (privado) a `uploads/productos/` (público);
+  - la **endereza según EXIF**, la achica a 1600 px como máximo y la guarda en JPEG o WebP;
+  - actualiza `productos.imagen` y llama a `MenuAppNotifier::catalogoCambio('producto', $id)`, así MenuApp la toma en segundos;
+  - la candidata pasa a `oficial`, y la oficial que había pasa a `anterior`. Así funciona el botón **"Volver a la foto anterior"**;
+  - registra en `AuditLog` quién la publicó y si fue mejorada con IA.
+- [x] **8.8 Permisos, en dos niveles:**
+  - **`fotos_menu`:** ver la pestaña, sacar y subir candidatas, mejorarlas con IA y descartarlas. Es para los empleados;
+  - **`fotos_menu_publicar`:** además, **elegir la oficial** y volver a la anterior. Es para el dueño o el encargado. Así un empleado propone y alguien con criterio decide qué ve el cliente;
+  - si el comercio prefiere que cualquiera publique, alcanza con dar los dos permisos al mismo rol;
+  - en la pestaña, un filtro **"Con candidatas para revisar"** le muestra al encargado lo que falta decidir;
+  - de paso, **la Galería y la IA** pasan a pedir permiso (`requireCanEdit('galeria')` o `fotos_menu`) en lugar de solo sesión, para controlar el gasto en IA.
+- [x] **8.9 Límite de IA:** un tope diario de mejoras por usuario, configurable (por ejemplo, 20), con un mensaje claro al llegar al tope. El gasto se ve en los módulos de uso de Gemini que ya existen.
+- [x] **8.10 Arreglar la ficha del producto:** `subirImagen()` tiene que **avisar** si la foto se rechazó ("La foto pesa más de 5 MB" o "formato no válido") en lugar de guardar sin foto. También tiene que aplicar el mismo achicado y la misma corrección de rotación que 8.7. Subir una foto desde la ficha la publica directo como oficial, para quien tenga permiso de Productos.
+
+Pruebas de la etapa 8:
+
+> Ya hay cobertura automática en `tests/unit/FotosMenuTest.php` (87 aserciones, sin base de
+> datos): que el tope de 3 candidatas se controle en el **servidor** en los dos caminos
+> (subir y mejorar), que la IA use opciones fijas y que la guarda "no cambies el producto"
+> vaya **siempre** concatenada, que publicar exija `fotos_menu_publicar` mientras proponer
+> alcanza con `fotos_menu`, que la Galería y la IA ya no se abran con solo tener sesión, que
+> la vista previa use los dos recortes reales (4:3 y 240 px con `object-fit: cover`), y que
+> `ImagenHelper` achique de verdad una foto de 4000×3000 por debajo del límite de subida.
+> Lo de abajo sigue pendiente: necesita celulares reales y el menú de MenuApp andando.
+
+- [ ] Desde un celular Android y un iPhone: "Sacar foto" abre la cámara, y una foto de 10 MB se sube sin error, porque se achica antes.
+- [ ] Una foto sacada en vertical se ve derecha en la vista previa, en Dewoc y en el menú de MenuApp.
+- [ ] La vista previa recorta igual que MenuApp: comparar la misma foto en la tarjeta y en el detalle de los dos sistemas.
+- [ ] Con 3 candidatas no se puede subir ni mejorar otra, tampoco llamando a la API directo. Al descartar una, se vuelve a poder.
+- [ ] "Mejorar con IA" crea otra candidata con el mismo producto (misma porción y toppings), y la original sigue disponible.
+- [ ] "Elegir como oficial" cambia la foto en MenuApp en menos de un minuto (con el aviso configurado), y "Volver a la foto anterior" la restaura.
+- [ ] Un usuario con solo `fotos_menu` puede proponer candidatas pero no publicarlas ni entrar a la ficha del producto. Un usuario sin permiso no ve la Galería.
+
 ### Etapa 7 · Licenciamiento (futuro: antes de vender Dewoc a un cliente externo)
 
 > No hace falta para Serendipia. Si Dewoc pasa a ser multiempresa
@@ -449,6 +550,7 @@ Cuando cambia algo del catálogo, Dewoc avisa y **MenuApp vuelve a pedir `/catal
   - llamarlo dos veces no duplica.
 - [ ] **Anulación:** repone la MP y es idempotente.
 - [ ] **Webhook:** se envía con una firma válida, y si MenuApp está caído no frena el guardado del producto.
+- [ ] **Fotos del menú (etapa 8):** ver las pruebas al final de la etapa 8.
 - [ ] **Caja (etapa 6):**
   - `/estado` devuelve siempre el mismo `instalacion.id`, también después de regenerar el token;
   - abrir el primer turno envía `caja.abierta`, y cerrar el último envía `caja.cerrada`; con dos turnos, cerrar uno no envía nada;

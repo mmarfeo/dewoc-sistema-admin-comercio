@@ -5,6 +5,7 @@ require_once BASE_PATH . '/app/Models/CategoriaModel.php';
 require_once BASE_PATH . '/app/Models/GrupoOpcionModel.php';
 require_once BASE_PATH . '/core/PrecioHelper.php';
 require_once BASE_PATH . '/core/MenuAppNotifier.php';
+require_once BASE_PATH . '/core/ImagenHelper.php';
 
 class ProductosController extends Controller
 {
@@ -73,7 +74,9 @@ class ProductosController extends Controller
             $this->json(['ok' => false, 'error' => implode(' ', $errores)], 422);
         }
 
-        $imagen = $this->subirImagen();
+        // Devuelve el motivo en vez de descartar la foto en silencio (ver tarea 8.10).
+        [$imagen, $errorImagen] = $this->subirImagen();
+        if ($errorImagen !== null) $this->json(['ok' => false, 'error' => $errorImagen], 422);
         if ($imagen !== null) $data['imagen'] = $imagen;
 
         $id = $this->model->insert($data);
@@ -303,7 +306,8 @@ class ProductosController extends Controller
         $errores = $this->validar($data);
         if ($errores) $this->json(['ok' => false, 'error' => implode(' ', $errores)], 422);
 
-        $imagen = $this->subirImagen();
+        [$imagen, $errorImagen] = $this->subirImagen();
+        if ($errorImagen !== null) $this->json(['ok' => false, 'error' => $errorImagen], 422);
         if ($imagen !== null) $data['imagen'] = $imagen;
 
         $this->model->update($id, $data);
@@ -705,22 +709,41 @@ class ProductosController extends Controller
         return $errores;
     }
 
-    private function subirImagen(): ?string
+    /**
+     * Sube la foto del producto. Devuelve [nombreArchivo, error]: si la foto se rechaza, el
+     * motivo viaja en el segundo elemento para poder mostrárselo al usuario.
+     *
+     * Antes este método devolvía null en los tres casos de rechazo (error de subida, más de
+     * 5 MB, formato inválido) y el producto se guardaba SIN foto sin avisar nada. Una foto
+     * de un celular actual pesa entre 3 y 12 MB, así que era el caso normal, no el raro
+     * (ver tarea 8.10 de docs/integracion-menuapp-checklist.md).
+     *
+     * Además pasa por ImagenHelper: endereza según el EXIF (una foto vertical de celular se
+     * guardaba acostada) y achica a 1600 px, el mismo tratamiento que reciben las fotos
+     * publicadas desde Fotos del menú.
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function subirImagen(): array
     {
-        if (empty($_FILES['imagen']['tmp_name'])) return null;
-
-        $file = $_FILES['imagen'];
-        if ($file['error'] !== UPLOAD_ERR_OK) return null;
-        if ($file['size'] > MAX_FILE_SIZE) return null;
-        if (!in_array($file['type'], ALLOWED_IMAGES)) return null;
-
-        $ext      = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $nombre   = uniqid('prod_', true) . '.' . strtolower($ext);
-        $destino  = UPLOAD_PATH . '/productos/' . $nombre;
-
-        if (move_uploaded_file($file['tmp_name'], $destino)) {
-            return $nombre;
+        $error = (int)($_FILES['imagen']['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            return [null, null]; // no se eligió ninguna foto: no es un error
         }
-        return null;
+
+        $motivo = ImagenHelper::motivoRechazo($_FILES['imagen']);
+        if ($motivo !== null) return [null, $motivo];
+
+        $dir = UPLOAD_PATH . '/productos/';
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+        // Siempre .jpg: ImagenHelper::normalizar() devuelve JPEG, y la extensión tiene que
+        // coincidir con el contenido real.
+        $nombre = uniqid('prod_', true) . '.jpg';
+        if (!ImagenHelper::normalizar($_FILES['imagen']['tmp_name'], $dir . $nombre)) {
+            return [null, 'No se pudo guardar la foto en el servidor. Probá de nuevo.'];
+        }
+
+        return [$nombre, null];
     }
 }

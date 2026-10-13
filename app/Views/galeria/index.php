@@ -15,6 +15,19 @@
     </div>
 </div>
 
+<?php if (canView('fotos_menu')): ?>
+<!-- Pestañas: la Galería libre (fotos para redes) y las Fotos del menú, que están
+     asociadas a un producto y pasan por el circuito candidata → oficial (etapa 8). -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <span class="nav-link active">Galería</span>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="<?= url('galeria/fotos-menu') ?>">Fotos del menú</a>
+    </li>
+</ul>
+<?php endif; ?>
+
 <div id="progresoSubida" class="alert alert-info py-2 small d-none">Subiendo archivo...</div>
 
 <!-- ── Grilla de archivos ────────────────────────────────────────── -->
