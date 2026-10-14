@@ -211,6 +211,17 @@
                                 <div class="col-12">
                                     <div id="avisoMensajePedido" class="alert alert-info py-1 px-2 small mb-0 d-none" style="cursor:pointer" onclick="abrirChatDesdeAviso()"></div>
                                 </div>
+                                <!-- Lo mismo para los pedidos de MenuApp (etapa 9): el cliente o el
+                                     repartidor escribieron y nadie contestó. Al tocarlo se abre la
+                                     conversación que corresponde. -->
+                                <div class="col-12">
+                                    <div id="avisoMensajeMenuApp" class="alert alert-warning py-1 px-2 small mb-0 d-none" style="cursor:pointer" onclick="mapAbrirChatDesdeAviso()"></div>
+                                </div>
+                                <div class="col-12">
+                                    <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="mapAbrirLista()">
+                                        🛎 Pedidos de MenuApp
+                                    </button>
+                                </div>
                                 <div class="col-6">
                                     <label class="form-label small fw-semibold">Descuento global %</label>
                                     <input type="number" name="descuento_global" id="descGlobal" class="form-control form-control-sm" min="0" max="100" step="0.5" value="0">
@@ -3377,3 +3388,12 @@ document.addEventListener('keydown', function(e){
 .pos-resumen-label { color: #000; }
 :root[data-theme="dark"] .pos-resumen-label { color: #dee2e6; }
 </style>
+
+<?php
+/*
+ * Pedidos de MenuApp (etapa 9). Va al final del POS a propósito: su <script> usa esc(),
+ * _showModal() y _hideModal(), que se definen más arriba en este mismo archivo, y
+ * formatMoneda()/showToast(), que vienen de assets/js/app.js.
+ */
+require BASE_PATH . '/app/Views/ventas/_menuapp_pedidos.php';
+?>

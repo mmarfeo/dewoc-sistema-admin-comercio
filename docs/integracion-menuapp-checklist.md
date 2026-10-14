@@ -18,6 +18,11 @@
 > tiene una **vista previa igual a la del menú**, con hasta **3 fotos candidatas** (sacadas con el celular
 > o mejoradas con IA). Los empleados proponen y el encargado elige la **oficial**. MenuApp la toma sola,
 > sin cambios de su lado.
+>
+> **Actualización 2026‑10‑13 (3):** **etapa 9**, los pedidos de MenuApp se atienden **desde el POS de Dewoc**
+> (D14 a D17): alerta, aceptar, rechazar, proponer cambios al cliente, y dos conversaciones por pedido
+> (con el cliente y con el repartidor), con respuestas rápidas editables. Un solo lugar de atención, sin
+> avisos duplicados. Suma una **API de MenuApp para Dewoc** (3.10).
 
 ---
 
@@ -48,6 +53,10 @@ DEWOC (maestro)                              MENUAPP (vidriera + pedidos)
 | D11 | **Una instalación de Dewoc se conecta a un solo comercio de MenuApp.** Al conectar, MenuApp comprueba la identidad de la instalación con `GET /estado`. |
 | D12 | **La contratación de Dewoc la controla MenuApp:** un plan que incluya Dewoc, la prueba gratis, o la habilitación manual del super administrador. Si el comercio deja de tenerlo, la integración queda en pausa y el comercio maneja el menú desde MenuApp. Al reactivarla, Dewoc vuelve a mandar sobre el catálogo. |
 | D13 | **Promoción cruzada:** MenuApp ofrece Dewoc a quien no lo tiene, y Dewoc ofrece MenuApp en su pantalla de Integraciones. |
+| D14 | **Un pedido se atiende en un solo lugar.** Un comercio con Dewoc atiende los pedidos de MenuApp **en el POS de Dewoc por defecto** (configurable en MenuApp). El aviso de "pedido nuevo" llega solo ahí: MenuApp no manda el suyo. Los avisos al cliente y los del repartidor siguen saliendo de MenuApp, porque son para otra gente. |
+| D15 | **Red de seguridad:** si un pedido no se atiende en unos minutos (3 por defecto) o Dewoc no respondió al avisarle, MenuApp manda **un único** aviso de respaldo al dueño y al encargado. Los comercios con otros CRM atienden todo en MenuApp, como hasta ahora. |
+| D16 | **Desde el POS se puede aceptar, rechazar o proponer algo diferente al cliente.** Dewoc no decide por su cuenta: se lo pide a MenuApp, que hace el resto (cobro o link de pago, aviso al cliente y `POST /ventas`). Proponer cambios reutiliza el flujo de MenuApp: el cliente acepta o rechaza desde su seguimiento. Quien está en la caja no necesita un usuario de MenuApp. Lo puede hacer **cualquiera con acceso al POS** (permiso `ventas_pos`), como con los mayoristas. |
+| D17 | **Dos conversaciones por pedido**, que viven en MenuApp: **caja ↔ cliente** y **caja ↔ repartidor**. El cliente no ve la del repartidor, y el repartidor no ve la del cliente; si necesita hablar con el cliente, lo llama, porque tiene su teléfono. **Respuestas rápidas editables** por conversación: el comercio arma la lista y cada respuesta se puede retocar antes de enviarla. |
 | D9 | **Si los precios incluyen IVA es una opción de configuración de Dewoc**, por comercio: "Los precios de venta cargados **incluyen IVA**" o "**no incluyen IVA** (se suma al vender)". Rige para `precio_venta` y para `precio_online` por igual, y la respetan **todos** los módulos (POS, Portal mayorista, Chat IA, reportes y MenuApp). Es independiente de la condición fiscal: la condición define si el comprobante **discrimina** IVA, y esta opción define si el precio cargado **ya lo trae**. |
 
 ---
@@ -249,17 +258,95 @@ Cuando cambia algo del catálogo, Dewoc avisa y **MenuApp vuelve a pedir `/catal
 - **Caja (etapa 6):** al abrir un turno, si es el primero abierto, enviar `{"evento":"caja.abierta"}`. Al cerrar el **último** turno abierto, enviar `{"evento":"caja.cerrada"}`. Con varios turnos, el menú sigue abierto mientras quede alguno abierto. MenuApp además consulta `/estado` cada minuto.
 - **Disponibilidad:** **no** hace falta avisar cada movimiento de stock. MenuApp consulta `/disponibilidad` periódicamente y Dewoc vuelve a validar al aceptar (3.3).
 
+### 3.7 `POST /pedidos` — pedido nuevo para atender (etapa 9)
+
+MenuApp lo llama cuando un pedido queda **esperando aprobación** (con pago previo, después de que se acredita el pago). Es idempotente por `referencia`.
+
+```json
+{
+  "referencia": "MA-12-A7K2",
+  "codigo": "A7K2",
+  "canal": "delivery",
+  "mesa": null,
+  "cliente": { "nombre": "Juan Pérez", "telefono": "1155556666" },
+  "direccion": "Gorriti 1234",
+  "items": [
+    { "producto_id": 345, "nombre": "Helado 1 kg", "cantidad": 1,
+      "opciones": [ { "opcion_id": 71, "nombre": "Dulce de leche", "cantidad": 1 } ], "notas": null }
+  ],
+  "total": 19000.00,
+  "metodo_pago": "mercadopago",
+  "pagado_online": true,
+  "notas": "Timbre 2B",
+  "creado_en": "2026-10-13T20:15:00-03:00",
+  "vence_en": "2026-10-13T20:25:00-03:00",
+  "url_menuapp": "https://menuapp.dewoc.com/admin/pedidos/1234"
+}
+```
+
+- **Respuesta:** `201` (o `200` si ya existía).
+- **No registra ninguna venta** ni toca el stock: es la alerta para atenderlo. La venta se registra al aceptar, con `POST /ventas` (3.3), como hasta ahora.
+- **`producto_id` y `opcion_id`:** son IDs de **Dewoc**. Sirven para mostrar el pedido y para armar una propuesta de cambios (3.10).
+- **`vence_en`:** cuándo vence el pedido si nadie lo aprueba. Pasado ese momento, Dewoc deja de mostrar la alerta aunque no le llegue la novedad.
+- **`url_menuapp`:** para abrir el pedido en MenuApp si hace falta, por ejemplo para ver el historial completo.
+
+### 3.8 `POST /pedidos/{referencia}/novedades` — algo cambió en el pedido (etapa 9)
+
+MenuApp avisa los cambios para que el POS se actualice. Es idempotente, y si la referencia no existe responde `404` (MenuApp lo ignora).
+
+| `tipo` | Cuándo | Datos extra | Qué hace Dewoc |
+|---|---|---|---|
+| `estado` | cambia el estado (aceptado, propuesta enviada, cliente aceptó o rechazó la propuesta, en preparación, en camino, entregado, rechazado, vencido o cancelado) | `estado`, `estado_texto` | actualiza el pedido en la lista. Si ya no requiere acción, saca la alerta |
+| `mensaje` | escribió el cliente o el repartidor | `conversacion` (`cliente` o `repartidor`), `de`, `texto`, `enviado_en` | suma el mensaje sin leer, con sonido y Web Push |
+| `repartidor` | se asignó o cambió el repartidor | `repartidor` (nombre) | habilita la conversación con el repartidor |
+
+Ejemplo: `{ "tipo": "mensaje", "conversacion": "repartidor", "de": "Carlos (repartidor)", "texto": "Estoy a 5 cuadras", "enviado_en": "…" }`.
+
+### 3.9 Seguridad de la API de MenuApp para Dewoc (etapa 9)
+
+Para que el POS pueda aceptar, rechazar, proponer y escribir, **Dewoc llama a MenuApp** (al revés que el resto del contrato).
+
+- **URL base:** `https://menuapp.dewoc.com/api/dewoc/v1/` (no lleva el comercio: MenuApp lo identifica por la firma).
+- **Firma:** cada request lleva los headers `X-Dewoc-Instalacion: <instalacion_id>`, `X-Timestamp: <unix>` y `X-Signature: hex(HMAC-SHA256(timestamp + "." + cuerpo crudo, webhook_secret))`. El secreto es el **mismo que ya comparten** para los avisos.
+  - MenuApp rechaza si el timestamp tiene más de 5 minutos de diferencia (contra repeticiones), si la firma no coincide o si la integración está en pausa.
+- **Usuario de la caja:** cada acción manda `usuario: { "id": 7, "nombre": "Juan" }`. MenuApp lo muestra ("Caja · Juan") y lo guarda en el historial del pedido. No hace falta que exista en MenuApp.
+
+### 3.10 Endpoints de MenuApp para Dewoc (etapa 9)
+
+| Método y ruta | Para qué | Cuerpo | Respuestas |
+|---|---|---|---|
+| `GET pedidos/{referencia}` | estado actual, ítems, total, si se puede aceptar o proponer, repartidor | — | `200`, `404` |
+| `POST pedidos/{referencia}/aceptar` | aceptar | `usuario` | `200` con el estado nuevo. `409` si ya no está esperando aprobación. `409 sin_stock` o `409 caja_cerrada` si Dewoc rechaza la venta (3.3), con el mismo mensaje que vería el comercio |
+| `POST pedidos/{referencia}/rechazar` | rechazar (MenuApp reembolsa lo cobrado) | `motivo`, `usuario` | `200`, `409` |
+| `POST pedidos/{referencia}/proponer` | **proponer algo diferente al cliente** | `items` (con IDs de **Dewoc**: `producto_id`, `cantidad`, `opciones: [{opcion_id, cantidad}]`, `notas`), `motivo`, `usuario` | `200` con el total nuevo. `422` si algún producto u opción no está en el menú o no cumple los mínimos y máximos de gustos. `409` si el pedido ya no admite cambios |
+| `GET pedidos/{referencia}/mensajes?conversacion=cliente\|repartidor&despues=<id>` | leer una conversación | — | `200`: lista de `{ id, de: comercio\|customer\|rider\|system, nombre, texto, enviado_en }` |
+| `POST pedidos/{referencia}/mensajes` | escribir | `conversacion`, `texto` (máx. 500), `usuario` | `201`. `409` si es al repartidor y todavía no hay uno asignado |
+| `GET respuestas-rapidas[?referencia=<ref>]` | la lista editable del comercio | — | `200`: `{ "cliente": [ … ], "repartidor": [ … ] }`. Con `?referencia=`, los textos vienen **ya completados** con los datos de ese pedido |
+
+- **Proponer** solo se puede mientras el pedido espera aprobación, igual que en MenuApp. El cliente recibe la propuesta en su seguimiento y la acepta o la rechaza. Si la acepta, MenuApp registra la venta en Dewoc. Si el pago fue previo, cobra o reintegra la diferencia.
+- Las **respuestas rápidas** se editan en MenuApp (Configuración → Respuestas rápidas). Pueden llevar `{cliente}`, `{codigo}` y `{repartidor}`, que se completan solos. Desde el POS, al elegir una, el texto queda en el cuadro **para retocarlo** antes de enviarlo.
+
 ---
 
 ## 4. Tareas
 
-> **Estado al 2026‑10‑13:** etapas 0 a 4, **6** y **8** implementadas en el código. Quedan
-> **pendientes de ejecución** las migraciones `database/menuapp_integracion_migration.sql`
-> y `database/fotos_menu_migration.sql` sobre la base, y las tareas que son trabajo de
-> datos, de prueba en dispositivos reales o de otro sistema: **1.4** (revisar los productos
-> de Serendipia), la sección 5 y las pruebas de la etapa 8 (necesitan la base migrada y un
-> celular), la **etapa 5** (eliminar la tienda online), que el propio plan deja para el
-> final, y la **etapa 7** (licenciamiento), que el plan marca como futura.
+> **Estado al 2026‑10‑13:** etapas 0 a 4, **6**, **8** y **9** implementadas en el código.
+>
+> **Pendiente de ejecución:** las tres migraciones —
+> `database/menuapp_integracion_migration.sql`, `database/fotos_menu_migration.sql` y
+> `database/menuapp_pedidos_migration.sql` — y los permisos nuevos (`integraciones`,
+> `fotos_menu`, `fotos_menu_publicar`) asignados a los roles que correspondan.
+>
+> **La etapa 9 queda a validar contra MenuApp:** las secciones 3.9 y 3.10 definen endpoints
+> del OTRO repositorio, así que el cliente está escrito contra este documento como fuente de
+> verdad. El vector de firma reproducible para comprobar los dos lados está en
+> `tests/unit/MenuAppPedidosTest.php::testElVectorDeFirmaEsEstable()`.
+>
+> **Sigue abierto** lo que es trabajo de datos, de dispositivos reales o de otro sistema:
+> **1.4** (revisar los productos de Serendipia), la sección 5, las pruebas de la etapa 8
+> (necesitan un celular) y las de la etapa 9 (necesitan MenuApp andando), la **etapa 5**
+> (eliminar la tienda online), que el propio plan deja para el final, y la **etapa 7**
+> (licenciamiento), que el plan marca como futura.
 
 ### Etapa 0 · Preparar Dewoc
 
@@ -497,6 +584,72 @@ Pruebas de la etapa 8:
 - [ ] "Elegir como oficial" cambia la foto en MenuApp en menos de un minuto (con el aviso configurado), y "Volver a la foto anterior" la restaura.
 - [ ] Un usuario con solo `fotos_menu` puede proponer candidatas pero no publicarlas ni entrar a la ficha del producto. Un usuario sin permiso no ve la Galería.
 
+### Etapa 9 · Atender los pedidos de MenuApp desde el POS (D14 a D17)
+
+> Reutiliza el mecanismo de los pedidos del Portal mayorista: el POS consulta cada 30 segundos
+> (`PedidosClientesController::pendienteParaMi()`, "al primero que lo atienda"), el chat con
+> `PedidoMensajeModel` (no leídos y marcar leídos), y Web Push a quienes tienen la caja abierta
+> (`PushSubscriptionModel::findSuscripcionesTurnosAbiertos()`). Como el menú solo recibe pedidos con
+> la caja abierta (D10), siempre hay alguien en el POS. Todo lo puede hacer **cualquiera con acceso
+> al POS** (`ventas_pos`).
+>
+> **Los pedidos y los mensajes viven en MenuApp.** Dewoc guarda una copia para mostrar y la mantiene
+> al día con las novedades (3.8). Cuando actúa, se lo pide a MenuApp (3.10).
+
+- [x] **9.1 Tablas** (migración idempotente):
+  - `menuapp_pedidos`: `id`, `referencia` UNIQUE, `datos` JSON (el cuerpo de 3.7, actualizado con cada novedad), `estado`, `requiere_accion` TINYINT, `repartidor`, `vence_en`, `atendido_por_usuario_id`, `created_at`, `updated_at`;
+  - `menuapp_mensajes_no_leidos`: `referencia`, `conversacion`, `cantidad`, para el contador del POS. Los mensajes en sí se leen de MenuApp.
+- [x] **9.2 Recibir de MenuApp:** `POST /api/menuapp/v1/pedidos` (3.7) y `POST /api/menuapp/v1/pedidos/{referencia}/novedades` (3.8), con `requireApiToken()`.
+- [x] **9.3 Cliente de la API de MenuApp** (`core/MenuAppClient.php`): firma de 3.9, timeout de 10 segundos y mensajes de error claros ("MenuApp no responde, probá de nuevo"). Se lee la URL base de la configuración de Integraciones.
+  - Errores que devuelve MenuApp: `401 firma_invalida | timestamp_vencido | no_autorizado`, `403 integracion_en_pausa`, `404 pedido_inexistente`, `409 no_permitido | sin_stock | caja_cerrada` (con `mensaje` para mostrar tal cual) y `422 datos_invalidos` (con `mensaje`).
+  - El reloj del servidor de Dewoc tiene que estar en hora: si la diferencia supera los 5 minutos, MenuApp rechaza la llamada.
+- [x] **9.4 Alerta en el POS:** sumar los pedidos de MenuApp a la consulta de cada 30 segundos de `ventas/pos.php`, en el mismo estilo que los mayoristas.
+  - Un sonido y una ventana con el canal, el cliente, la dirección, los productos con sus gustos, el total, si ya está pagado y **cuánto falta para que venza**.
+  - Tres botones:
+    - **Aceptar**: llama a 3.10. Si MenuApp responde `sin_stock` o `caja_cerrada`, se muestra el motivo;
+    - **Rechazar**: pide el motivo, con motivos frecuentes para elegir;
+    - **Proponer algo diferente** (9.5).
+  - **"Lo veo después"** cierra la ventana y deja el pedido en la lista.
+  - La alerta se va sola cuando la novedad de estado dice que ya no requiere acción, o al pasar `vence_en`.
+- [x] **9.5 Proponer algo diferente al cliente:** un editor del pedido con el **catálogo de Dewoc**. Solo muestra los productos marcados para el menú y sus gustos, con los mínimos y máximos de cada grupo.
+  - Permite cambiar un gusto, cambiar o quitar un producto, cambiar cantidades y sumar productos.
+  - Pide un **motivo** que lee el cliente (por ejemplo, "Nos quedamos sin Frutilla, ¿te va Frutos rojos?").
+  - Muestra el **total nuevo** que calcula MenuApp antes de confirmar.
+  - Envía a 3.10 `proponer`. El pedido pasa a "Propuesta enviada" hasta que el cliente responda.
+- [x] **9.6 Lista "Pedidos de MenuApp"** en el POS:
+  - los que esperan acción;
+  - los que están en curso (aceptado, en preparación, en camino), con el repartidor;
+  - los terminados del día.
+  - Cada uno con su **contador de mensajes sin leer**.
+- [x] **9.7 Dos conversaciones por pedido** (D17), en pestañas **"Cliente"** y **"Repartidor"**:
+  - la del repartidor se habilita cuando hay uno asignado;
+  - se leen y escriben con 3.10, y los mensajes llegan por la novedad `mensaje` (3.8), con sonido y Web Push;
+  - **respuestas rápidas:** un botón con la lista de 3.10 (`respuestas-rapidas`) según la pestaña. Al elegir una, el texto queda en el cuadro **para retocarlo** antes de enviar;
+  - el mensaje sale firmado "Caja · {nombre del usuario}".
+- [x] **9.8 Web Push** a quienes tienen la caja abierta: pedido nuevo, mensaje nuevo, y "el cliente aceptó o rechazó tu propuesta".
+
+Pruebas de la etapa 9:
+
+> Ya hay cobertura automática en `tests/unit/MenuAppPedidosTest.php` (88 aserciones, sin base
+> de datos ni MenuApp): el **vector de firma** de 3.9 fijo y reproducible, que se firme y se
+> envíe el mismo cuerpo crudo, que `POST /pedidos` no registre ninguna venta ni toque el
+> stock, que un reintento no reabra una alerta ya atendida, que una novedad de un pedido
+> desconocido dé 404, que el texto de los mensajes no se guarde en Dewoc, que las acciones
+> deleguen en MenuApp en vez de decidir solas, que un `sin_stock` deje el pedido esperando,
+> que los no leídos bajen recién después de leer de verdad, y que la respuesta rápida quede
+> en el cuadro para editarla.
+>
+> Lo de abajo sigue pendiente: necesita MenuApp andando y los endpoints de 3.10 del otro lado.
+
+- [ ] Un pedido nuevo aparece en el POS en menos de 30 segundos, con sonido, y llega la notificación push a quien tiene la caja abierta.
+- [ ] Aceptar desde el POS confirma el pedido en MenuApp y registra la venta (`POST /ventas`). Si falta materia prima o la caja está cerrada, se ve el motivo y el pedido sigue esperando.
+- [ ] Rechazar desde el POS reembolsa en MenuApp si estaba pagado, y el cliente lo ve en su seguimiento.
+- [ ] Proponer un cambio de gusto: el cliente lo ve y lo acepta; la venta se registra con el gusto nuevo y la diferencia se cobra o se reintegra.
+- [ ] Un mensaje al repartidor no lo ve el cliente, y uno al cliente no lo ve el repartidor.
+- [ ] Una respuesta rápida se puede editar antes de enviarla. Si se cambia la lista en MenuApp, el POS la ve actualizada.
+- [ ] Si se acepta en MenuApp, la alerta desaparece del POS. Repetir `POST /pedidos` no duplica la alerta.
+- [ ] Con un timestamp viejo o una firma mal hecha, MenuApp rechaza la llamada.
+
 ### Etapa 7 · Licenciamiento (futuro: antes de vender Dewoc a un cliente externo)
 
 > No hace falta para Serendipia. Si Dewoc pasa a ser multiempresa
@@ -551,6 +704,7 @@ Pruebas de la etapa 8:
 - [ ] **Anulación:** repone la MP y es idempotente.
 - [ ] **Webhook:** se envía con una firma válida, y si MenuApp está caído no frena el guardado del producto.
 - [ ] **Fotos del menú (etapa 8):** ver las pruebas al final de la etapa 8.
+- [ ] **Pedidos en el POS (etapa 9):** ver las pruebas al final de la etapa 9.
 - [ ] **Caja (etapa 6):**
   - `/estado` devuelve siempre el mismo `instalacion.id`, también después de regenerar el token;
   - abrir el primer turno envía `caja.abierta`, y cerrar el último envía `caja.cerrada`; con dos turnos, cerrar uno no envía nada;
@@ -561,12 +715,19 @@ Pruebas de la etapa 8:
 ## 6. Lo que hace MenuApp (otro repositorio, para no duplicarlo acá)
 
 > **Estado: implementado en MenuApp el 2026‑10‑12** y probado contra un Dewoc simulado con los
-> ejemplos de la sección 3. Detalle en `docs/integracion-dewoc.md` del repo de MenuApp.
+> ejemplos de la sección 3. **La parte de MenuApp de la etapa 9 (3.7 a 3.10) quedó implementada el 2026‑10‑13**,
+> con pruebas que firman las llamadas igual que Dewoc. Detalle en `docs/integracion-dewoc.md` del repo de MenuApp.
 > Cualquier cambio en el contrato de la sección 3 hay que hacerlo en los dos proyectos.
 
 - **Nuevo conector "Dewoc"** en `StockManager::DRIVERS`, con URL, token y secreto del webhook.
 - **Importación inicial** y vinculación por ID de Dewoc en categorías, productos, grupos y opciones. Los campos que vienen de Dewoc quedan bloqueados en su panel.
 - **Recepción del webhook** `POST /webhooks/dewoc/{slug}` y consulta cada 5 minutos de `/catalogo?desde` y `/disponibilidad`.
+- **Atención de pedidos (etapa 9, pendiente en MenuApp):**
+  - una opción "Dónde atendés los pedidos", que es Dewoc por defecto;
+  - dos conversaciones por pedido y respuestas rápidas editables;
+  - `POST /pedidos` y `/novedades` hacia Dewoc, y la API firmada para Dewoc (3.9 y 3.10);
+  - con Dewoc elegido, no se manda el aviso propio de "pedido nuevo" al dueño, encargado y cocina;
+  - **red de seguridad (D15):** un único aviso de respaldo si nadie lo atiende en 3 minutos o si Dewoc no respondió.
 - **Llamadas de pedidos:**
   - `POST /ventas` al aceptar; si recibe `409`, muestra los faltantes y no acepta;
   - `cobrar` al entregar los pedidos en efectivo o transferencia;

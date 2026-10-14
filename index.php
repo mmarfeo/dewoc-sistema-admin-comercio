@@ -513,6 +513,20 @@ $router->post('caja/abrir',           'CajaController', 'abrir');
 // Imputa a la caja una venta cobrada en mano sin turno abierto (ventas.cobro_pendiente = 1,
 // típicamente un pedido de MenuApp entregado fuera de turno).
 $router->post('caja/imputar-cobro-pendiente', 'CajaController', 'imputarCobroPendiente');
+
+// Pedidos de MenuApp atendidos desde el POS (ver docs/integracion-menuapp-checklist.md,
+// etapa 9). Permiso ventas_pos, igual que los pedidos mayoristas: lo puede hacer cualquiera
+// que esté en la caja, y no necesita un usuario de MenuApp (D16).
+$router->get('menuapp-pedidos/pendiente-para-mi',    'MenuAppPedidosController', 'pendienteParaMi');
+$router->get('menuapp-pedidos/hay-mensajes-sin-leer','MenuAppPedidosController', 'hayMensajesSinLeer');
+$router->get('menuapp-pedidos/lista',                'MenuAppPedidosController', 'lista');
+$router->get('menuapp-pedidos/mensajes',             'MenuAppPedidosController', 'mensajes');
+$router->get('menuapp-pedidos/catalogo',             'MenuAppPedidosController', 'catalogoParaPropuesta');
+$router->get('menuapp-pedidos/respuestas-rapidas',   'MenuAppPedidosController', 'respuestasRapidas');
+$router->post('menuapp-pedidos/aceptar',             'MenuAppPedidosController', 'aceptar');
+$router->post('menuapp-pedidos/rechazar',            'MenuAppPedidosController', 'rechazar');
+$router->post('menuapp-pedidos/proponer',            'MenuAppPedidosController', 'proponer');
+$router->post('menuapp-pedidos/mensaje',             'MenuAppPedidosController', 'enviarMensaje');
 $router->post('caja/prever-cierre',   'CajaController', 'preverCierre');
 $router->post('caja/cerrar',          'CajaController', 'cerrar');
 $router->post('caja/movimiento',      'CajaController', 'movimiento');
@@ -681,6 +695,10 @@ if (str_starts_with(trim($url, '/'), 'api/menuapp/v1/')) {
         $api->catalogo();
     } elseif ($httpMethod === 'GET' && $ruta === 'disponibilidad') {
         $api->disponibilidad();
+    } elseif ($httpMethod === 'POST' && $ruta === 'pedidos') {
+        $api->pedidos();
+    } elseif ($httpMethod === 'POST' && preg_match('#^pedidos/([^/]+)/novedades$#', $ruta, $m)) {
+        $api->novedades($m[1]);
     } elseif ($httpMethod === 'POST' && $ruta === 'ventas') {
         $api->ventas();
     } elseif ($httpMethod === 'POST' && preg_match('#^ventas/([^/]+)/cobrar$#', $ruta, $m)) {

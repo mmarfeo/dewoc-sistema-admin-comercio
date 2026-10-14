@@ -241,6 +241,26 @@
 
 ---
 
+## Pedidos de MenuApp en el POS
+
+Permiso `ventas_pos`. Dewoc **no decide**: aceptar, rechazar, proponer y escribir se le piden
+a MenuApp con `core/MenuAppClient.php` (firmado, ver 3.9). Etapa 9 del checklist.
+
+| Método | Ruta | Controlador#Método | Descripción |
+|--------|------|-------------------|-------------|
+| GET | `menuapp-pedidos/pendiente-para-mi` | MenuAppPedidosController#pendienteParaMi | Sondeo de 30 s: pedido más viejo esperando acción |
+| GET | `menuapp-pedidos/hay-mensajes-sin-leer` | MenuAppPedidosController#hayMensajesSinLeer | Aviso no bloqueante de mensajes nuevos |
+| GET | `menuapp-pedidos/lista` | MenuAppPedidosController#lista | Esperando acción / en curso / terminados hoy |
+| GET | `menuapp-pedidos/mensajes` | MenuAppPedidosController#mensajes | Lee una conversación de MenuApp y pone los no leídos en cero |
+| GET | `menuapp-pedidos/catalogo` | MenuAppPedidosController#catalogoParaPropuesta | Productos del menú con sus grupos de gustos, para armar una propuesta |
+| GET | `menuapp-pedidos/respuestas-rapidas` | MenuAppPedidosController#respuestasRapidas | La lista que el comercio edita en MenuApp |
+| POST | `menuapp-pedidos/aceptar` | MenuAppPedidosController#aceptar | Le pide a MenuApp que acepte (puede dar `sin_stock` o `caja_cerrada`) |
+| POST | `menuapp-pedidos/rechazar` | MenuAppPedidosController#rechazar | Rechaza con motivo; MenuApp reembolsa si estaba pagado |
+| POST | `menuapp-pedidos/proponer` | MenuAppPedidosController#proponer | Propone otro pedido al cliente, con IDs de Dewoc |
+| POST | `menuapp-pedidos/mensaje` | MenuAppPedidosController#enviarMensaje | Escribe en la conversación del cliente o del repartidor |
+
+---
+
 ## Fotos del menú
 
 Permiso `fotos_menu` para proponer candidatas; `fotos_menu_publicar` para elegir la oficial
@@ -286,6 +306,8 @@ inexistente · `409` falta stock · `422` datos inválidos · `429` más de 120 
 | GET | `api/menuapp/v1/estado` | ApiMenuAppController#estado | Identidad de la instalación (UUID fijo, comercio, CUIT) y si la caja está abierta |
 | GET | `api/menuapp/v1/catalogo[?desde=ISO8601]` | ApiMenuAppController#catalogo | Catálogo del menú online (con `?desde`, solo los cambios; los despublicados vienen con `visible: false`) |
 | GET | `api/menuapp/v1/disponibilidad` | ApiMenuAppController#disponibilidad | Qué productos y gustos se pueden vender ahora |
+| POST | `api/menuapp/v1/pedidos` | ApiMenuAppController#pedidos | Pedido nuevo para atender en el POS (idempotente; NO registra la venta) |
+| POST | `api/menuapp/v1/pedidos/{referencia}/novedades` | ApiMenuAppController#novedades | Cambio de estado, mensaje nuevo o repartidor asignado |
 | POST | `api/menuapp/v1/ventas` | ApiMenuAppController#ventas | Registra un pedido aceptado como venta (idempotente por `referencia`; no mueve la caja; `409 caja_cerrada` si no hay turno abierto) |
 | POST | `api/menuapp/v1/ventas/{referencia}/cobrar` | ApiMenuAppController#cobrar | Pedido entregado y cobrado en mano: entra a la caja del turno abierto |
 | POST | `api/menuapp/v1/ventas/{referencia}/anular` | ApiMenuAppController#anular | Cancela un pedido ya aceptado: repone la MP y revierte el cobro |

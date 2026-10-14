@@ -4,6 +4,7 @@ require_once BASE_PATH . '/app/Models/IntegracionMenuAppModel.php';
 require_once BASE_PATH . '/app/Models/MenuAppCatalogoModel.php';
 require_once BASE_PATH . '/app/Models/VentaModel.php';
 require_once BASE_PATH . '/app/Models/CajaModel.php';
+require_once BASE_PATH . '/app/Models/MenuAppPedidoModel.php';
 require_once BASE_PATH . '/core/PrecioHelper.php';
 
 /**
@@ -545,6 +546,151 @@ class ApiMenuAppController extends Controller
             $nombre = trim(preg_replace('/\s*\(necesita .*$/', '', $f) ?? $f);
             return ['tipo' => 'ingrediente', 'nombre' => $nombre !== '' ? $nombre : $f];
         }, $faltantes));
+    }
+
+
+    // ── 3.7 · POST /api/menuapp/v1/pedidos ───────────────────────────────────
+
+    /**
+     * Pedido nuevo para atender desde el POS (etapa 9, decisión D14). MenuApp lo llama
+     * cuando el pedido queda esperando aprobación — con pago previo, recién cuando el pago
+     * se acreditó.
+     *
+     * NO registra ninguna venta ni toca el stock: es solo la alerta. La venta se registra
+     * al aceptar, y la registra MenuApp llamando a POST /ventas (3.3). Por eso acá no hay
+     * nada de PrecioHelper ni de VentaModel.
+     *
+     * Idempotente por referencia: un reintento de MenuApp responde 200 y no duplica la
+     * alerta ni reabre una que alguien ya atendió.
+     */
+    public function pedidos(): void
+    {
+        $this->requireApiToken();
+
+        $body       = $this->cuerpoJson();
+        $referencia = trim((string)($body['referencia'] ?? ''));
+
+        if ($referencia === '' || mb_strlen($referencia) > 40) {
+            $this->json(['error' => 'datos_invalidos', 'detalle' => 'referencia es obligatoria (hasta 40 caracteres).'], 422);
+        }
+        if (empty($body['items']) || !is_array($body['items'])) {
+            $this->json(['error' => 'datos_invalidos', 'detalle' => 'items no puede estar vacío.'], 422);
+        }
+
+        $r = $this->pedidoModel()->guardarDesdeMenuApp($referencia, $body);
+
+        // Push a quienes tienen la caja abierta. Como el menú solo recibe pedidos con la
+        // caja abierta (D10), siempre hay alguien ahí para recibirlo.
+        if ($r['creado']) {
+            $this->avisarPorPush(
+                'Pedido nuevo de MenuApp',
+                trim(($body['canal'] ?? 'Pedido') . ' · ' . ($body['cliente']['nombre'] ?? 'Cliente')
+                    . ' · ' . moneda((float)($body['total'] ?? 0))),
+                'ventas/pos'
+            );
+        }
+
+        logApp("API MenuApp: pedido {$referencia} " . ($r['creado'] ? 'recibido' : 'reenviado (ya existía)') . '.');
+
+        $this->json(['pedido_id' => $r['id'], 'referencia' => $referencia], $r['creado'] ? 201 : 200);
+    }
+
+    // ── 3.8 · POST /api/menuapp/v1/pedidos/{referencia}/novedades ────────────
+
+    /**
+     * Algo cambió en el pedido y el POS tiene que reflejarlo. Idempotente; si la referencia
+     * no existe responde 404 y MenuApp lo ignora (puede pasar si el pedido se creó antes de
+     * que el comercio tuviera Dewoc conectado).
+     */
+    public function novedades(string $referencia = ''): void
+    {
+        $this->requireApiToken();
+
+        $referencia = trim(urldecode($referencia));
+        if ($referencia === '') {
+            $this->json(['error' => 'datos_invalidos', 'detalle' => 'Falta la referencia en la URL.'], 422);
+        }
+
+        $modelo = $this->pedidoModel();
+        if (!$modelo->findByReferencia($referencia)) {
+            $this->json(['error' => 'pedido_inexistente', 'referencia' => $referencia], 404);
+        }
+
+        $body = $this->cuerpoJson();
+        $tipo = (string)($body['tipo'] ?? '');
+
+        switch ($tipo) {
+            case 'estado':
+                $estado = trim((string)($body['estado'] ?? ''));
+                if ($estado === '') {
+                    $this->json(['error' => 'datos_invalidos', 'detalle' => 'Falta estado.'], 422);
+                }
+                $modelo->actualizarEstado($referencia, $estado, (string)($body['estado_texto'] ?? '') ?: null);
+                break;
+
+            case 'mensaje':
+                $conversacion = (string)($body['conversacion'] ?? '');
+                if (!in_array($conversacion, ['cliente', 'repartidor'], true)) {
+                    $this->json(['error' => 'datos_invalidos', 'detalle' => 'conversacion debe ser cliente o repartidor.'], 422);
+                }
+                // El texto del mensaje NO se guarda: la conversación vive en MenuApp y se lee
+                // de ahí (3.10). Acá solo se cuenta, para el badge del POS.
+                $modelo->sumarMensajeSinLeer($referencia, $conversacion);
+                $this->avisarPorPush(
+                    'Mensaje nuevo de un pedido',
+                    trim(((string)($body['de'] ?? 'Alguien')) . ': ' . mb_substr((string)($body['texto'] ?? ''), 0, 80)),
+                    'ventas/pos'
+                );
+                break;
+
+            case 'repartidor':
+                $modelo->actualizarRepartidor($referencia, (string)($body['repartidor'] ?? '') ?: null);
+                break;
+
+            default:
+                $this->json(['error' => 'datos_invalidos', 'detalle' => 'tipo debe ser estado, mensaje o repartidor.'], 422);
+        }
+
+        logApp("API MenuApp: novedad '{$tipo}' del pedido {$referencia}.");
+        $this->json(['ok' => true, 'referencia' => $referencia, 'tipo' => $tipo], 200);
+    }
+
+    private function pedidoModel(): MenuAppPedidoModel
+    {
+        return new MenuAppPedidoModel();
+    }
+
+    /**
+     * Web Push a los usuarios con la caja abierta (tarea 9.8). Nunca puede hacer fallar la
+     * recepción del pedido: si el push falla, el pedido ya quedó guardado y el POS lo ve en
+     * su sondeo de 30 segundos igual.
+     */
+    private function avisarPorPush(string $titulo, string $cuerpo, string $ruta): void
+    {
+        try {
+            if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return;
+
+            require_once BASE_PATH . '/app/Models/PushSubscriptionModel.php';
+            require_once BASE_PATH . '/core/WebPush.php';
+
+            $payload = json_encode([
+                'title' => $titulo,
+                'body'  => $cuerpo,
+                'url'   => rtrim(BASE_URL, '/') . '/' . ltrim($ruta, '/'),
+                'icon'  => rtrim(BASE_URL, '/') . '/assets/favicon/favicon.png',
+            ], JSON_UNESCAPED_UNICODE);
+
+            $pushModel = new PushSubscriptionModel();
+            foreach ($pushModel->findSuscripcionesTurnosAbiertos() as $sub) {
+                $res = WebPush::enviar(
+                    ['endpoint' => $sub['endpoint'], 'p256dh' => $sub['p256dh'], 'auth' => $sub['auth']],
+                    $payload, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+                );
+                if (in_array($res['status'], [404, 410], true)) $pushModel->eliminarPorId((int)$sub['id']);
+            }
+        } catch (\Throwable $e) {
+            logApp('Push de pedido de MenuApp: ' . $e->getMessage(), 'WARN');
+        }
     }
 
     // ── 3.4 · POST /api/menuapp/v1/ventas/{referencia}/cobrar ────────────────
