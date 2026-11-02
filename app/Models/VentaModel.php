@@ -95,14 +95,31 @@ class VentaModel extends Model
             $params[':usuario_id'] = (int)$filtros['usuario_id'];
         }
 
+        // Validación con Dewoc Cobros (ver CobroRecibidoModel::conciliarVenta()). Solo si el
+        // módulo se usa en esta instalación: sin la migración, la tabla no existe.
+        //  - validadas:   tienen un cobro recibido que las respalda.
+        //  - sin_validar: cobradas (en todo o en parte) con Transferencia o Mercado Pago y sin
+        //                 ningún cobro que las respalde → lo que hay que revisar al conciliar.
+        $selCobro = $joinCobro = '';
+        if (!empty($filtros['con_cobros'])) {
+            $selCobro  = ', cr.id AS cobro_id, cr.monto AS cobro_monto, cr.nombre AS cobro_nombre, cr.recibido_at AS cobro_recibido_at, cr.vinculado_por AS cobro_vinculado_por';
+            $joinCobro = 'LEFT JOIN cobros_recibidos cr ON cr.venta_id = v.id';
+            if (($filtros['dewoc_cobros'] ?? '') === 'validadas') {
+                $where[] = 'cr.id IS NOT NULL';
+            } elseif (($filtros['dewoc_cobros'] ?? '') === 'sin_validar') {
+                $where[] = "cr.id IS NULL AND v.estado = 'completada' AND (v.monto_transferencia + v.monto_mercadopago) > 0";
+            }
+        }
+
         $cond = implode(' AND ', $where);
         return $this->queryAll(
             "SELECT v.*, u.nombre AS usuario_nombre, c.nombre AS cliente_nombre,
-                    t.numero AS turno_numero
+                    t.numero AS turno_numero {$selCobro}
              FROM ventas v
              LEFT JOIN usuarios u ON u.id = v.usuario_id
              LEFT JOIN clientes c ON c.id = v.cliente_id
              LEFT JOIN turnos   t ON t.id = v.turno_id
+             {$joinCobro}
              WHERE $cond
              ORDER BY v.id DESC",
             $params

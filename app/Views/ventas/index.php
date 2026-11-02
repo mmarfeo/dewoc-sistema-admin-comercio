@@ -38,6 +38,14 @@
                     <option value="completada" <?= $filtros['estado']==='completada'?'selected':'' ?>>Completada</option>
                     <option value="anulada"    <?= $filtros['estado']==='anulada'   ?'selected':'' ?>>Anulada</option>
                 </select></div>
+            <?php if ($conCobros): ?>
+            <div class="col-md-3"><label class="form-label small fw-semibold mb-1">Dewoc Cobros</label>
+                <select name="dewoc_cobros" class="form-select form-select-sm">
+                    <option value="">— Todas —</option>
+                    <option value="validadas"   <?= $filtros['dewoc_cobros']==='validadas'  ?'selected':'' ?>>Validadas por Dewoc Cobros</option>
+                    <option value="sin_validar" <?= $filtros['dewoc_cobros']==='sin_validar'?'selected':'' ?>>Transferencia / MP sin validar</option>
+                </select></div>
+            <?php endif; ?>
             <div class="col-md-auto">
                 <button type="submit" class="btn btn-sm btn-outline-primary">Filtrar</button>
                 <?php if ($puedeVerHistorial): ?>
@@ -60,6 +68,27 @@ $totalPeriodo = array_sum(array_column(
     — <?= count(array_filter($ventas, fn($v) => $v['estado'] === 'completada')) ?> ventas
 </div>
 
+<?php if ($conCobros): ?>
+<?php
+// Conciliación (Dewoc Cobros): ventas cobradas con Transferencia o Mercado Pago sin un cobro
+// real que las respalde, y cobros que llegaron al celular sin una venta asociada.
+$sinValidar = array_filter($ventasDelPeriodo, fn($v) => $v['estado'] === 'completada' && empty($v['cobro_id'])
+    && ((float)$v['monto_transferencia'] + (float)$v['monto_mercadopago']) > 0);
+$validadas  = array_filter($ventasDelPeriodo, fn($v) => !empty($v['cobro_id']));
+?>
+<div class="alert <?= ($sinValidar || $cobrosSinVenta['cantidad']) ? 'alert-warning' : 'alert-success' ?> py-2 small mb-3">
+    <strong>💰 Dewoc Cobros:</strong>
+    <?= count($validadas) ?> <?= count($validadas) === 1 ? 'venta validada' : 'ventas validadas' ?>
+    · <?= count($sinValidar) ?> por transferencia/MP <strong>sin validar</strong>
+    (<?= moneda(array_sum(array_map(fn($v) => (float)$v['monto_transferencia'] + (float)$v['monto_mercadopago'], $sinValidar))) ?>)
+    · <?= $cobrosSinVenta['cantidad'] ?> <?= $cobrosSinVenta['cantidad'] === 1 ? 'transferencia recibida' : 'transferencias recibidas' ?> <strong>sin asignar</strong>
+    (<?= moneda($cobrosSinVenta['total']) ?><?= $cobrosSinVenta['sin_monto'] ? ' + ' . $cobrosSinVenta['sin_monto'] . ' con monto oculto' : '' ?>).
+    <?php if ($cobrosSinVenta['cantidad']): ?>
+    <a href="<?= url('cobros-recibidos?estado=pendientes&desde=' . urlencode($filtros['desde']) . '&hasta=' . urlencode($filtros['hasta'])) ?>" class="alert-link">Asignar transferencias pendientes</a>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <div class="card border-0">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -68,7 +97,7 @@ $totalPeriodo = array_sum(array_column(
                     <tr>
                         <th>#</th><th>Fecha/Hora</th><th>Vendedor</th><th>Cliente</th>
                         <th>Turno</th><th class="text-end">Total</th>
-                        <th>Pago</th><th>Origen</th><th>AFIP</th><th>Estado</th>
+                        <th>Pago</th><?php if ($conCobros): ?><th>Dewoc Cobros</th><?php endif; ?><th>Origen</th><th>AFIP</th><th>Estado</th>
                         <th class="text-center" style="width:90px">Acciones</th>
                     </tr>
                 </thead>
@@ -82,6 +111,19 @@ $totalPeriodo = array_sum(array_column(
                         <td class="small"><?= $v['turno_numero'] ? '#'.$v['turno_numero'] : '—' ?></td>
                         <td class="text-end fw-semibold"><?= moneda($v['total_con_iva']) ?></td>
                         <td class="small"><?= e(ucfirst(str_replace('_',' ',$v['metodo_pago']))) ?></td>
+                        <?php if ($conCobros): ?>
+                        <td class="small">
+                            <?php if (!empty($v['cobro_id'])): ?>
+                            <span class="badge bg-success-soft text-success"
+                                  title="<?= e('Cobro ' . ($v['cobro_monto'] !== null ? moneda((float)$v['cobro_monto']) : '') . ($v['cobro_nombre'] ? ' de ' . $v['cobro_nombre'] : '') . ' recibido el ' . fechaHora($v['cobro_recibido_at']) . ($v['cobro_vinculado_por'] ? ' · asignada a mano' : ' · mismo monto')) ?>">✓ <?= $v['cobro_vinculado_por'] ? 'Asignada' : 'Validada' ?></span>
+                            <?php if ($v['cobro_nombre']): ?><span class="d-block text-muted" style="font-size:.72rem"><?= e($v['cobro_nombre']) ?></span><?php endif; ?>
+                            <?php elseif ($v['estado'] === 'completada' && ((float)$v['monto_transferencia'] + (float)$v['monto_mercadopago']) > 0): ?>
+                            <span class="badge bg-warning-soft text-warning" title="Cobrada con Transferencia o Mercado Pago y sin un cobro recibido por el mismo monto">Sin validar</span>
+                            <?php else: ?>
+                            <span class="text-muted">—</span>
+                            <?php endif; ?>
+                        </td>
+                        <?php endif; ?>
                         <td class="small">
                             <?php
                             // Las ventas de MenuApp no tienen turno hasta que se entregan (D6),

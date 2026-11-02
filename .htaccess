@@ -6,7 +6,7 @@ RewriteCond %{REQUEST_URI} ^//
 RewriteRule ^(.*)$ /$1 [R=301,L]
 
 # Bloquear acceso a directorios sensibles
-RewriteRule ^(config|core|app/Models|app/Controllers|storage|database|vendor)/ - [F,L]
+RewriteRule ^(config|core|app/Models|app/Controllers|storage|database|vendor|herramientas)/ - [F,L]
 
 # Bloquear acceso a archivos "punto" en la raíz (.env, .git, etc.) — a diferencia de las
 # carpetas de arriba, .env es un ARCHIVO que existe físicamente en el servidor, así que la

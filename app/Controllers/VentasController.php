@@ -33,12 +33,34 @@ class VentasController extends Controller
             $filtros['usuario_id'] = (int) Session::user()['id'];
         }
 
+        // Columna y filtro "Dewoc Cobros": desde que se cargó una licencia, aunque después
+        // haya vencido (lo ya recibido sigue visible, C20).
+        $conCobros = moduloEstado('dewoc_cobros')['estado'] !== 'sin_licencia';
+        $filtros['con_cobros']   = $conCobros;
+        $filtros['dewoc_cobros'] = $conCobros ? (string)$this->param('dewoc_cobros', '') : '';
+
+        $ventas = $this->model->findAllConDetalle($filtros);
+
+        // Resumen de la conciliación: siempre del período completo, aunque el listado esté
+        // filtrado por "validadas" o "sin validar".
+        $cobrosSinVenta = $ventasDelPeriodo = null;
+        if ($conCobros) {
+            require_once BASE_PATH . '/app/Models/CobroRecibidoModel.php';
+            $cobrosSinVenta   = (new CobroRecibidoModel())->sinVenta($filtros['desde'], $filtros['hasta']);
+            $ventasDelPeriodo = $filtros['dewoc_cobros'] === ''
+                ? $ventas
+                : $this->model->findAllConDetalle(['dewoc_cobros' => ''] + $filtros);
+        }
+
         $this->render('ventas.index', [
             'pageTitle'         => 'Ventas',
             'breadcrumb'        => ['Ventas' => null, 'Listado' => null],
-            'ventas'            => $this->model->findAllConDetalle($filtros),
+            'ventas'            => $ventas,
+            'ventasDelPeriodo'  => $ventasDelPeriodo,
             'filtros'           => $filtros,
             'puedeVerHistorial' => $puedeVerHistorial,
+            'conCobros'         => $conCobros,
+            'cobrosSinVenta'    => $cobrosSinVenta,
         ]);
     }
 
@@ -498,6 +520,8 @@ class VentasController extends Controller
                 (new PedidoClienteModel())->marcarConvertido($pedidoClienteId, $id);
             }
 
+            $this->conciliarDewocCobros($id);
+
             // AFIP: solicitar CAE si está configurado y se pidió facturar
             $afipData         = null;
             $estadoAfipDespues = null;
@@ -553,6 +577,22 @@ class VentasController extends Controller
         }
     }
 
+    /**
+     * Recalcula qué cobro de Dewoc Cobros valida esta venta (ver
+     * CobroRecibidoModel::conciliarVenta()): al registrarla, anularla o cambiarle el medio de
+     * pago. Nunca puede hacer fallar la operación de la venta.
+     */
+    private function conciliarDewocCobros(int $ventaId): void
+    {
+        if (!moduloHabilitado('dewoc_cobros')) return;
+        try {
+            require_once BASE_PATH . '/app/Models/CobroRecibidoModel.php';
+            (new CobroRecibidoModel())->conciliarVenta($ventaId);
+        } catch (\Throwable $e) {
+            logApp("Dewoc Cobros: no se pudo conciliar la venta #{$ventaId} — " . $e->getMessage(), 'ERROR');
+        }
+    }
+
     /** Ver detalle de una venta */
     public function ver(): void
     {
@@ -592,6 +632,7 @@ class VentasController extends Controller
             $ok = $this->model->anular($id);
             if ($ok) {
                 AuditLog::log('anular', 'ventas', "Venta #{$id} anulada");
+                $this->conciliarDewocCobros($id);
                 $this->json(['ok' => true, 'mensaje' => 'Venta anulada.']);
             } else {
                 $this->json(['ok' => false, 'error' => 'No se pudo anular.'], 409);
@@ -618,6 +659,7 @@ class VentasController extends Controller
             $ok = $this->model->cambiarMedioPago($id, $nuevo);
             if ($ok) {
                 AuditLog::log('cambiar_medio_pago', 'ventas', "Venta #{$id} — medio de pago cambiado a {$nuevo}");
+                $this->conciliarDewocCobros($id);
                 $this->json(['ok' => true, 'mensaje' => 'Medio de pago actualizado.']);
             } else {
                 $this->json(['ok' => false, 'error' => 'No se pudo actualizar (¿venta inexistente o anulada?).'], 409);
@@ -705,6 +747,7 @@ class VentasController extends Controller
                 $this->json(['ok' => false, 'error' => 'No se pudo anular la venta (¿ya estaba anulada?).'], 409);
             }
             $solicitudModel->resolver($solicitudId, 'aprobada', (int) $usuario['id']);
+            $this->conciliarDewocCobros($ventaId);
             AuditLog::log('aprobar_anulacion', 'ventas', "Venta #{$ventaId} — anulación aprobada (solicitud #{$solicitudId})");
             $this->json(['ok' => true, 'mensaje' => 'Anulación aprobada. La venta quedó anulada.']);
         }

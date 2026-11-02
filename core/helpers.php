@@ -176,3 +176,35 @@ function logApp(string $message, string $level = 'INFO'): void
     $line = sprintf("[%s] [%s] %s\n", date('Y-m-d H:i:s'), $level, $message);
     file_put_contents(BASE_PATH . '/storage/logs/app.log', $line, FILE_APPEND | LOCK_EX);
 }
+
+/**
+ * Estado de la licencia de un módulo que se cobra aparte (ej. 'dewoc_cobros'). Ver
+ * docs/dewoc-cobros-checklist.md, tarea 1A.6 y core/Licencias.php.
+ *
+ * Devuelve ['estado', 'hasta', 'dispositivos', 'dias_restantes', 'licencia_id'], con estado
+ * activa | por_vencer | gracia | vencida | sin_licencia. Se calcula una sola vez por request
+ * (verificar la firma no es gratis y el POS lo consulta seguido).
+ *
+ * Si la tabla todavía no existe (migración sin correr) o la base falla, el módulo queda
+ * apagado (sin_licencia) en vez de romper la pantalla que lo pregunta.
+ */
+function moduloEstado(string $modulo): array
+{
+    static $cache = [];
+    if (isset($cache[$modulo])) return $cache[$modulo];
+
+    require_once BASE_PATH . '/app/Models/LicenciaModel.php';
+    try {
+        $datos = (new LicenciaModel())->vigente($modulo);
+    } catch (\Throwable $e) {
+        logApp("moduloEstado({$modulo}): no se pudo leer la licencia — " . $e->getMessage(), 'ERROR');
+        $datos = null;
+    }
+    return $cache[$modulo] = Licencias::estado($datos);
+}
+
+/** El módulo funciona: licencia activa, por vencer o en gracia (C20). */
+function moduloHabilitado(string $modulo): bool
+{
+    return in_array(moduloEstado($modulo)['estado'], Licencias::ESTADOS_HABILITADOS, true);
+}

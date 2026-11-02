@@ -217,11 +217,6 @@
                                 <div class="col-12">
                                     <div id="avisoMensajeMenuApp" class="alert alert-warning py-1 px-2 small mb-0 d-none" style="cursor:pointer" onclick="mapAbrirChatDesdeAviso()"></div>
                                 </div>
-                                <div class="col-12">
-                                    <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="mapAbrirLista()">
-                                        🛎 Pedidos de MenuApp
-                                    </button>
-                                </div>
                                 <div class="col-6">
                                     <label class="form-label small fw-semibold">Descuento global %</label>
                                     <input type="number" name="descuento_global" id="descGlobal" class="form-control form-control-sm" min="0" max="100" step="0.5" value="0">
@@ -442,6 +437,24 @@
                     </div>
                 </form>
             </div>
+        </div>
+
+        <!-- Accesos debajo de la tarjeta de cobro, fuera del formulario de la venta -->
+        <div class="row g-2 mt-1">
+            <div class="col-12">
+                <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="mapAbrirLista()">
+                    🛎 Pedidos de MenuApp
+                </button>
+            </div>
+            <?php if (moduloHabilitado('dewoc_cobros') && $turno): ?>
+            <!-- Transferencias del turno que Dewoc Cobros no pudo validar solas
+                 (ver ventas/_cobros_recibidos.php). Solo aparece si hay alguna. -->
+            <div class="col-12 d-none" id="wrapTransfPendientes">
+                <button type="button" class="btn btn-outline-warning btn-sm w-100" onclick="cobrosAbrirPendientes()">
+                    💰 Transferencias sin asignar <span class="badge bg-warning text-dark ms-1" id="cntTransfPendientes">0</span>
+                </button>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -3396,4 +3409,10 @@ document.addEventListener('keydown', function(e){
  * formatMoneda()/showToast(), que vienen de assets/js/app.js.
  */
 require BASE_PATH . '/app/Views/ventas/_menuapp_pedidos.php';
+
+// Cobros de Dewoc Cobros (docs/dewoc-cobros-checklist.md, etapa 3). Sin licencia vigente no
+// se incluye: no hay consulta ni aviso (3.0).
+if (moduloHabilitado('dewoc_cobros')) {
+    require BASE_PATH . '/app/Views/ventas/_cobros_recibidos.php';
+}
 ?>

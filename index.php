@@ -39,7 +39,9 @@ set_exception_handler(function (\Throwable $e): void {
     $aceptaJson  = str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json');
     // La API de MenuApp tiene que responder JSON también en los GET, sin depender de que
     // el cliente haya mandado el header Accept (ver el bloque de ruteo más abajo).
-    $esApiJson   = str_contains($_SERVER['REQUEST_URI'] ?? '', '/api/menuapp/v1/');
+    $esApiJson   = str_contains($_SERVER['REQUEST_URI'] ?? '', '/api/menuapp/v1/')
+        || str_contains($_SERVER['REQUEST_URI'] ?? '', '/api/cobros/v1/')
+        || str_contains($_SERVER['REQUEST_URI'] ?? '', '/api/licencias/v1/');
 
     if ($esPost || $aceptaJson || $esApiJson) {
         header('Content-Type: application/json; charset=utf-8');
@@ -634,6 +636,30 @@ $router->post('integraciones/guardar',        'IntegracionesController', 'guarda
 $router->post('integraciones/activar',        'IntegracionesController', 'activar');
 $router->post('integraciones/probar',         'IntegracionesController', 'probar');
 
+// Integraciones → Dewoc Cobros (ver docs/dewoc-cobros-checklist.md, tareas 1A.7 y 1.6).
+// Controlador propio, para no seguir sumando al de MenuApp.
+$router->get('integraciones/dewoc-cobros',                  'IntegracionDewocCobrosController', 'index');
+$router->post('integraciones/dewoc-cobros/cargar-licencia', 'IntegracionDewocCobrosController', 'cargarLicencia');
+$router->post('integraciones/dewoc-cobros/contratar',       'IntegracionDewocCobrosController', 'contratar');
+$router->post('integraciones/dewoc-cobros/cliente-estado',  'IntegracionDewocCobrosController', 'clienteEstado');
+$router->post('integraciones/dewoc-cobros/cliente-dispositivos', 'IntegracionDewocCobrosController', 'clienteDispositivos');
+$router->post('integraciones/dewoc-cobros/generar-token',   'IntegracionDewocCobrosController', 'generarToken');
+$router->get('integraciones/dewoc-cobros/dispositivo',      'IntegracionDewocCobrosController', 'dispositivo');
+$router->post('integraciones/dewoc-cobros/revocar',         'IntegracionDewocCobrosController', 'revocar');
+$router->post('integraciones/dewoc-cobros/volver-a-leer',   'IntegracionDewocCobrosController', 'volverALeer');
+
+// Aviso de cobros recibidos en el POS (ver docs/dewoc-cobros-checklist.md, etapa 3).
+$router->get('cobros-recibidos/nuevos', 'CobrosRecibidosController', 'nuevos');
+// Transferencias sin asignar: pop-up de cada hora en el POS (solo el turno abierto) y la
+// pantalla Ventas → Transferencias recibidas.
+$router->get('cobros-recibidos',                         'CobrosRecibidosController', 'index');
+$router->get('cobros-recibidos/pendientes-turno',        'CobrosRecibidosController', 'pendientesTurno');
+$router->get('cobros-recibidos/candidatas',              'CobrosRecibidosController', 'candidatas');
+$router->post('cobros-recibidos/asignar',                'CobrosRecibidosController', 'asignar');
+$router->post('cobros-recibidos/no-corresponde',         'CobrosRecibidosController', 'noCorresponde');
+$router->post('cobros-recibidos/desasignar',             'CobrosRecibidosController', 'desasignar');
+$router->post('cobros-recibidos/quitar-no-corresponde',  'CobrosRecibidosController', 'quitarNoCorresponde');
+
 // Backup
 $router->get('admin/backup',           'BackupController', 'index');
 $router->post('admin/backup/download', 'BackupController', 'download');
@@ -705,6 +731,46 @@ if (str_starts_with(trim($url, '/'), 'api/menuapp/v1/')) {
         $api->cobrar($m[1]);
     } elseif ($httpMethod === 'POST' && preg_match('#^ventas/([^/]+)/anular$#', $ruta, $m)) {
         $api->anular($m[1]);
+    } else {
+        http_response_code(404);
+        echo json_encode(['error' => 'ruta_inexistente', 'ruta' => $ruta], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API de Dewoc Cobros, la app del celular (ver docs/dewoc-cobros-checklist.md, sección 3).
+// Mismo esquema que la de MenuApp: se resuelve antes del dispatch, sin sesión ni CSRF, y
+// cada acción se autentica con el token del dispositivo (ApiCobrosController).
+// ─────────────────────────────────────────────────────────────────────────────
+// Servidor de licencias automáticas (ver core/ServidorLicencias.php). Solo responde en la
+// instalación con LICENCIAS_SERVIDOR=1; en las demás devuelve 404.
+if (str_starts_with(trim($url, '/'), 'api/licencias/v1/')) {
+    header('Content-Type: application/json; charset=utf-8');
+    require_once __DIR__ . '/app/Controllers/ApiLicenciasController.php';
+
+    $ruta = substr(trim($url, '/'), strlen('api/licencias/v1/'));
+    if ($httpMethod === 'POST' && $ruta === 'solicitar') {
+        (new ApiLicenciasController())->solicitar();
+    }
+    http_response_code(404);
+    echo json_encode(['error' => 'ruta_inexistente', 'ruta' => $ruta], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if (str_starts_with(trim($url, '/'), 'api/cobros/v1/')) {
+    header('Content-Type: application/json; charset=utf-8');
+    require_once __DIR__ . '/app/Controllers/ApiCobrosController.php';
+
+    $ruta = substr(trim($url, '/'), strlen('api/cobros/v1/'));
+    $api  = new ApiCobrosController();
+
+    if ($httpMethod === 'GET' && $ruta === 'estado') {
+        $api->estado();
+    } elseif ($httpMethod === 'POST' && $ruta === 'notificaciones') {
+        $api->notificaciones();
+    } elseif ($httpMethod === 'POST' && $ruta === 'latido') {
+        $api->latido();
     } else {
         http_response_code(404);
         echo json_encode(['error' => 'ruta_inexistente', 'ruta' => $ruta], JSON_UNESCAPED_UNICODE);

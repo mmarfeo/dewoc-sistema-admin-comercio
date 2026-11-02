@@ -63,3 +63,7 @@ chat_*.jpg
 # AFIP: el pedido de certificado es un artefacto de la generación del certificado,
 # no código (el cert.pem y el key.pem ya están ignorados más arriba).
 storage/afip/*.csr
+
+# Claves privadas de licencias (deben vivir FUERA del repositorio, ver tarea 1A.1)
+*_privada.pem
+licencias_emitidas.csv

@@ -102,6 +102,15 @@ function sidebarGroupLabel(string $groupSlug, string $label): void {
                     </a>
                 </li>
                 <?php endif; ?>
+                <?php if (canView('ventas') && moduloEstado('dewoc_cobros')['estado'] !== 'sin_licencia'): ?>
+                <!-- Dewoc Cobros: transferencias recibidas y a qué venta corresponde cada una -->
+                <li class="nav-item collapse show nav-group-ventas">
+                    <a class="nav-link" href="<?= url('cobros-recibidos') ?>">
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="18" width="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                        Transferencias recibidas
+                    </a>
+                </li>
+                <?php endif; ?>
                 <?php if (canView('ventas_anulaciones')): ?>
                 <li class="nav-item collapse show nav-group-ventas">
                     <a class="nav-link" href="<?= url('ventas/solicitudes-anulacion') ?>">
@@ -517,6 +526,20 @@ function sidebarGroupLabel(string $groupSlug, string $label): void {
                     <a class="nav-link" href="<?= url('integraciones/menuapp') ?>">
                         <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="18" width="18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                         MenuApp
+                    </a>
+                </li>
+                <!-- Dewoc Cobros (ver docs/dewoc-cobros-checklist.md, tarea 1A.7): sin licencia
+                     lleva la etiqueta "Contratar"; vencida o por vencer, un punto de aviso. -->
+                <?php $cobrosEstado = moduloEstado('dewoc_cobros')['estado']; ?>
+                <li class="nav-item collapse show nav-group-integraciones <?= sidebarActive('integraciones', $currentMod) ?>">
+                    <a class="nav-link" href="<?= url('integraciones/dewoc-cobros') ?>">
+                        <svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="18" width="18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/><path d="M12 6v6M10 8.5h3a1.5 1.5 0 0 1 0 3h-2"/></svg>
+                        Dewoc Cobros
+                        <?php if ($cobrosEstado === 'sin_licencia'): ?>
+                        <span class="badge bg-primary-soft text-primary ms-auto" style="font-size:.65rem">Contratar</span>
+                        <?php elseif (in_array($cobrosEstado, ['por_vencer', 'gracia', 'vencida'], true)): ?>
+                        <span class="badge bg-danger ms-auto" style="font-size:.65rem">!</span>
+                        <?php endif; ?>
                     </a>
                 </li>
                 <?php endif; ?>
